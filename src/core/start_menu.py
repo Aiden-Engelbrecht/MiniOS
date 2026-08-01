@@ -68,17 +68,16 @@ class StartMenu(QMenu):
         
         self.addSeparator()
         
-        # Applications with creative icons
+        # Applications
         apps = [
             ("◈  Explorer", "explorer"),
+            ("◈  Notepad", "notepad"),
             ("◈  Terminal", "terminal"),
-            ("◈  Editor", "notepad"),
             ("◈  Settings", "settings")
         ]
         
         for label, app_id in apps:
             action = QAction(label, self)
-            # Use a proper function instead of lambda with checked
             action.triggered.connect(self.create_app_launcher(app_id))
             self.addAction(action)
         

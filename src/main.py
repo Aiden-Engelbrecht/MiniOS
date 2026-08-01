@@ -16,6 +16,7 @@ from core.start_menu import StartMenu
 from core.window_manager import WindowManager
 from apps.sample_app import SampleAppContent
 from apps.file_explorer import FileExplorerWidget
+from apps.notepad import NotepadWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -78,8 +79,8 @@ class DesktopWindow(QMainWindow):
         app_map = {
             "files": ("File Explorer", 800, 600, FileExplorerWidget()),
             "explorer": ("File Explorer", 800, 600, FileExplorerWidget()),
+            "notepad": ("Notepad", 700, 500, NotepadWidget()),
             "terminal": ("Terminal", 600, 450, SampleAppContent("Terminal")),
-            "notepad": ("Notepad", 500, 350, SampleAppContent("Notepad")),
             "settings": ("Settings", 550, 400, SampleAppContent("Settings"))
         }
         
