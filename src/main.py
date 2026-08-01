@@ -4,18 +4,20 @@ Minimal Black Edition
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QStackedWidget
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QColor, QPalette
+from PySide6.QtGui import QFont
 
 from core.splash_screen import MiniOSSplashScreen
+from core.login_screen import LoginScreen
 
 
-class MainWindow(QMainWindow):
-    """Main window for MiniOS - Minimal Black"""
+class DesktopWindow(QMainWindow):
+    """Desktop window for MiniOS - Minimal Black"""
     
-    def __init__(self):
+    def __init__(self, username="user"):
         super().__init__()
+        self.username = username
         self.setWindowTitle("minios")
         self.setGeometry(100, 100, 1200, 800)
         
@@ -50,10 +52,10 @@ class MainWindow(QMainWindow):
         
         layout.addStretch()
         
-        # Welcome message
-        welcome = QLabel("welcome")
+        # Welcome message with username
+        welcome = QLabel(f"welcome, {self.username}")
         welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome.setFont(QFont("Segoe UI", 16, QFont.Weight.Light))
+        welcome.setFont(QFont("Segoe UI", 20, QFont.Weight.Light))
         welcome.setStyleSheet("color: #666666; letter-spacing: 4px;")
         layout.addWidget(welcome)
         
@@ -66,7 +68,7 @@ class MainWindow(QMainWindow):
         
         layout.addStretch()
         
-        # Simple divider
+        # Divider
         divider = QLabel("— — —")
         divider.setAlignment(Qt.AlignmentFlag.AlignCenter)
         divider.setFont(QFont("Segoe UI", 10))
@@ -89,27 +91,50 @@ class MainWindow(QMainWindow):
 
 
 class MiniOSApplication:
+    """Main application class managing splash, login, and desktop"""
     
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("minios")
         self.app.setOrganizationName("minios")
         
-        self.splash = MiniOSSplashScreen()
-        self.splash.loadingComplete.connect(self.show_main_window)
+        # Create stacked widget to manage screens
+        self.stacked_widget = QStackedWidget()
         
-        self.main_window = MainWindow()
+        # Create screens
+        self.splash = MiniOSSplashScreen()
+        self.login_screen = LoginScreen()
+        self.desktop = None  # Will be created after login
+        
+        # Connect signals
+        self.splash.loadingComplete.connect(self.show_login)
+        self.login_screen.loginSuccessful.connect(self.on_login_success)
         
     def run(self):
+        """Start the application"""
         print("minios starting...")
         self.splash.show()
         sys.exit(self.app.exec())
     
-    def show_main_window(self):
+    def show_login(self):
+        """Switch from splash to login"""
+        print("showing login screen...")
+        self.splash.close()
+        self.login_screen.show()
+        self.login_screen.clear_fields()
+    
+    def on_login_success(self, username):
+        """Handle successful login"""
+        print(f"login successful: {username}")
+        self.login_screen.close()
+        
+        # Create and show desktop
+        self.desktop = DesktopWindow(username)
+        self.desktop.show()
         print("desktop ready")
-        self.main_window.show()
     
     def initialize_system(self):
+        """Initialize system components"""
         pass
 
 
@@ -120,6 +145,8 @@ def main():
         minios.run()
     except Exception as e:
         print(f"error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
