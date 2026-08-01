@@ -9,9 +9,6 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QLabel
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QFont, QColor, QPalette
 
-# Import the splash screen
-from core.splash_screen import MiniOSSplashScreen
-
 
 class MainWindow(QMainWindow):
     """Main window for MiniOS desktop"""
@@ -56,40 +53,20 @@ class MiniOSApplication:
         self.app.setApplicationName("MiniOS")
         self.app.setOrganizationName("MiniOS")
         
-        # Create splash screen first
-        self.splash = MiniOSSplashScreen()
-        
-        # Create main window (hidden initially)
+        # Create main window
         self.main_window = MainWindow()
         
     def run(self):
         """Start the application"""
         print("MiniOS starting...")
         
-        # Show splash screen
-        self.splash.show()
-        print("Splash screen displayed")
+        # Show the main window
+        self.main_window.show()
         
-        # Use a timer to check when splash is closed
-        self.check_splash_timer = QTimer()
-        self.check_splash_timer.timeout.connect(self.check_splash_status)
-        self.check_splash_timer.start(100)  # Check every 100ms
+        print("MiniOS is running!")
         
         # Execute the application
         sys.exit(self.app.exec())
-    
-    def check_splash_status(self):
-        """Check if splash screen is still visible"""
-        if not self.splash.isVisible():
-            # Splash screen is closed, show main window
-            self.check_splash_timer.stop()
-            self.show_main_window()
-    
-    def show_main_window(self):
-        """Show the main window after splash screen"""
-        print("Loading complete, showing desktop...")
-        self.main_window.show()
-        print("MiniOS is running!")
     
     def initialize_system(self):
         """Initialize all system components"""
