@@ -211,6 +211,7 @@ class BaseWindow(QWidget):
     def toggle_maximize(self):
         """Toggle between normal and maximized state"""
         if not self.is_maximized:
+            # Store current geometry before maximizing
             self.normal_geometry = self.geometry()
             self.showMaximized()
             self.is_maximized = True
@@ -319,7 +320,9 @@ class WindowManager:
         if window in self.minimized_windows:
             print(f"Window found in minimized list - restoring")
             window.restore_window()
-            self.minimized_windows.remove(window)
+            # Safe remove - check if still in list
+            if window in self.minimized_windows:
+                self.minimized_windows.remove(window)
             if self.taskbar:
                 self.taskbar.update_window_button(window, True)
         elif window in self.windows:
@@ -347,7 +350,9 @@ class WindowManager:
         """Called when a window restores itself"""
         if window in self.minimized_windows:
             print(f"Window restored: {window.title}")
-            self.minimized_windows.remove(window)
+            # Safe remove - check if in list
+            if window in self.minimized_windows:
+                self.minimized_windows.remove(window)
             if self.taskbar:
                 self.taskbar.update_window_button(window, True)
     
@@ -363,6 +368,7 @@ class WindowManager:
         if window in self.windows:
             print(f"Removing window: {window.title}")
             self.windows.remove(window)
+            # Safe remove from minimized list
             if window in self.minimized_windows:
                 self.minimized_windows.remove(window)
             if self.taskbar:
