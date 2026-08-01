@@ -15,6 +15,7 @@ from core.desktop import DesktopWidget, Taskbar
 from core.start_menu import StartMenu
 from core.window_manager import WindowManager
 from apps.sample_app import SampleAppContent
+from apps.file_explorer import FileExplorerWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -57,8 +58,6 @@ class DesktopWindow(QMainWindow):
         self.start_menu = StartMenu(self.taskbar)
         self.start_menu.appLaunched.connect(self.launch_application)
         
-        print("Desktop initialized with window manager and taskbar")
-        
     def show_start_menu(self):
         """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
@@ -75,33 +74,23 @@ class DesktopWindow(QMainWindow):
             self.shutdown()
             return
         
-        # Map app_id to display names
-        app_names = {
-            "files": "File Explorer",
-            "explorer": "File Explorer",
-            "terminal": "Terminal", 
-            "notepad": "Notepad",
-            "settings": "Settings"
+        # Map app_id to display names and content
+        app_map = {
+            "files": ("File Explorer", 800, 600, FileExplorerWidget()),
+            "explorer": ("File Explorer", 800, 600, FileExplorerWidget()),
+            "terminal": ("Terminal", 600, 450, SampleAppContent("Terminal")),
+            "notepad": ("Notepad", 500, 350, SampleAppContent("Notepad")),
+            "settings": ("Settings", 550, 400, SampleAppContent("Settings"))
         }
         
-        display_name = app_names.get(app_id, app_id.capitalize())
-        
-        # Different sizes for different apps
-        size_map = {
-            "files": (700, 500),
-            "explorer": (700, 500),
-            "terminal": (600, 450),
-            "notepad": (500, 350),
-            "settings": (550, 400)
-        }
-        width, height = size_map.get(app_id, (500, 350))
-        
-        # Create content
-        content = SampleAppContent(display_name)
-        
-        # Create the window
-        window = self.window_manager.create_window(display_name, width, height, content)
-        print(f"Window created for: {display_name}")
+        if app_id in app_map:
+            title, width, height, content = app_map[app_id]
+            self.window_manager.create_window(title, width, height, content)
+            print(f"Window created for: {title}")
+        else:
+            # Unknown app
+            content = SampleAppContent("Application")
+            self.window_manager.create_window("Application", 500, 300, content)
         
     def logout(self):
         """Logout and return to login screen"""
