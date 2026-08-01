@@ -129,15 +129,13 @@ class BaseWindow(QWidget):
         self.manager = manager
         self.is_maximized = False
         self.normal_geometry = None
+        self.is_minimized = False
         
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
         self.setup_ui()
         self.setFixedSize(width, height)
-        
-        # Connect signals
-        self.title_bar.minimizeRequested.connect(self.minimize_window)
         
     def setup_ui(self):
         # Main layout
@@ -162,7 +160,7 @@ class BaseWindow(QWidget):
         
         # Title bar
         self.title_bar = WindowTitleBar(self.title)
-        self.title_bar.closeRequested.connect(self.close)
+        self.title_bar.closeRequested.connect(self.close_window)
         self.title_bar.minimizeRequested.connect(self.minimize_window)
         self.title_bar.maximizeRequested.connect(self.toggle_maximize)
         frame_layout.addWidget(self.title_bar)
@@ -187,20 +185,26 @@ class BaseWindow(QWidget):
         main_layout.addWidget(self.frame)
         
         self.setLayout(main_layout)
+    
+    def close_window(self):
+        """Close the window"""
+        self.close()
         
     def minimize_window(self):
-        """Minimize the window (hide it)"""
+        """Minimize the window"""
+        print(f"Minimizing window: {self.title}")
+        self.is_minimized = True
         self.hide()
-        # Notify manager that window was minimized
         if self.manager:
             self.manager.on_window_minimized(self)
         
     def restore_window(self):
         """Restore a minimized window"""
+        print(f"Restoring window: {self.title}")
+        self.is_minimized = False
         self.show()
         self.raise_()
         self.activateWindow()
-        # Notify manager
         if self.manager:
             self.manager.on_window_restored(self)
         
@@ -239,6 +243,7 @@ class BaseWindow(QWidget):
         
     def closeEvent(self, event):
         """Handle window close - notify manager"""
+        print(f"Window closed: {self.title}")
         if self.manager:
             self.manager.remove_window(self)
         event.accept()
@@ -251,13 +256,11 @@ class WindowManager:
         self.windows = []
         self.window_counter = 0
         self.taskbar = taskbar
-        self.minimized_windows = set()
+        self.minimized_windows = []
         
-    def set_taskbar(self, taskbar):
-        """Set the taskbar reference for window buttons"""
-        self.taskbar = taskbar
         if taskbar:
             taskbar.windowButtonClicked.connect(self.restore_window_from_taskbar)
+            print("Taskbar connected to window manager")
         
     def create_window(self, title="Window", width=600, height=400, content_widget=None):
         """Create a new window with optional content"""
@@ -308,40 +311,42 @@ class WindowManager:
         
         return window
     
-    def minimize_window(self, window):
-        """Minimize a window"""
-        if window in self.windows:
-            window.hide()
-            self.minimized_windows.add(window)
-            if self.taskbar:
-                self.taskbar.update_window_button(window, False)
-    
     def restore_window_from_taskbar(self, window):
         """Restore a window from taskbar click"""
+        print(f"=== RESTORING WINDOW FROM TASKBAR: {window.title} ===")
+        
+        # Check if this window is in our minimized list
         if window in self.minimized_windows:
-            # Window is minimized - restore it
-            window.show()
-            window.raise_()
-            window.activateWindow()
+            print(f"Window found in minimized list - restoring")
+            window.restore_window()
             self.minimized_windows.remove(window)
             if self.taskbar:
                 self.taskbar.update_window_button(window, True)
         elif window in self.windows:
-            # Window is visible - bring to front
+            print(f"Window found in windows list - bringing to front")
             self.raise_window(window)
-            if self.taskbar:
-                self.taskbar.update_window_button(window, True)
+        else:
+            print(f"Window NOT FOUND in manager!")
+            # Try to find it by reference
+            for w in self.windows:
+                if w is window:
+                    print(f"Found window by reference: {w.title}")
+                    self.raise_window(w)
+                    break
     
     def on_window_minimized(self, window):
         """Called when a window minimizes itself"""
         if window in self.windows:
-            self.minimized_windows.add(window)
+            print(f"Window minimized: {window.title}")
+            if window not in self.minimized_windows:
+                self.minimized_windows.append(window)
             if self.taskbar:
                 self.taskbar.update_window_button(window, False)
     
     def on_window_restored(self, window):
         """Called when a window restores itself"""
         if window in self.minimized_windows:
+            print(f"Window restored: {window.title}")
             self.minimized_windows.remove(window)
             if self.taskbar:
                 self.taskbar.update_window_button(window, True)
@@ -350,13 +355,13 @@ class WindowManager:
         """Bring a window to the front"""
         window.raise_()
         window.activateWindow()
-        # Update taskbar button
         if self.taskbar:
             self.taskbar.update_window_button(window, True)
         
     def remove_window(self, window):
         """Remove a window from the manager"""
         if window in self.windows:
+            print(f"Removing window: {window.title}")
             self.windows.remove(window)
             if window in self.minimized_windows:
                 self.minimized_windows.remove(window)

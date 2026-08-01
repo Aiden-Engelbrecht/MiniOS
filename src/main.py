@@ -57,6 +57,8 @@ class DesktopWindow(QMainWindow):
         self.start_menu = StartMenu(self.taskbar)
         self.start_menu.appLaunched.connect(self.launch_application)
         
+        print("Desktop initialized with window manager and taskbar")
+        
     def show_start_menu(self):
         """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
@@ -98,7 +100,7 @@ class DesktopWindow(QMainWindow):
         content = SampleAppContent(display_name)
         
         # Create the window
-        self.window_manager.create_window(display_name, width, height, content)
+        window = self.window_manager.create_window(display_name, width, height, content)
         print(f"Window created for: {display_name}")
         
     def logout(self):

@@ -65,7 +65,7 @@ class Taskbar(QWidget):
             QPushButton#window_btn:checked {
                 background: #1a1a1a;
                 color: #ffffff;
-                border: 1px solid #333333;
+                border: 1px solid #444444;
             }
             QFrame#separator {
                 background: #1a1a1a;
@@ -134,13 +134,20 @@ class Taskbar(QWidget):
         if window in self.window_buttons:
             return
         
+        print(f"Adding taskbar button for: {title}")
+        
         # Create button
         btn = QPushButton(f"◈ {title[:15]}")
         btn.setObjectName("window_btn")
         btn.setCheckable(True)
         btn.setChecked(True)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.clicked.connect(lambda: self.windowButtonClicked.emit(window))
+        
+        # Store the window reference directly in the button
+        btn.window_ref = window
+        
+        # Connect using a simple lambda with the window captured
+        btn.clicked.connect(lambda: self.emit_window_click(window))
         
         # Store reference
         self.window_buttons[window] = btn
@@ -150,6 +157,11 @@ class Taskbar(QWidget):
         
         # Update container visibility
         self.window_container.setVisible(True)
+    
+    def emit_window_click(self, window):
+        """Emit the window click signal"""
+        print(f"Taskbar button clicked for: {window.title}")
+        self.windowButtonClicked.emit(window)
         
     def remove_window_button(self, window):
         """Remove a window button from the taskbar"""
@@ -162,11 +174,14 @@ class Taskbar(QWidget):
             # Hide container if no buttons
             if len(self.window_buttons) == 0:
                 self.window_container.setVisible(False)
+            
+            print(f"Removed taskbar button for: {window.title}")
     
     def update_window_button(self, window, is_active):
         """Update the active state of a window button"""
         if window in self.window_buttons:
             self.window_buttons[window].setChecked(is_active)
+            print(f"Updated taskbar button for: {window.title} active={is_active}")
 
 
 class DesktopIcon(QWidget):
