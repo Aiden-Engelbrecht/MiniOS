@@ -4,89 +4,88 @@ Minimal Black Edition
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QStackedWidget
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout
+)
+from PySide6.QtCore import Qt
 
 from core.splash_screen import MiniOSSplashScreen
 from core.login_screen import LoginScreen
+from core.desktop import DesktopWidget, Taskbar
+from core.start_menu import StartMenu
 
 
 class DesktopWindow(QMainWindow):
-    """Desktop window for MiniOS - Minimal Black"""
+    """Main desktop window with taskbar and desktop area"""
     
-    def __init__(self, username="user"):
+    def __init__(self, username="user", logout_callback=None):
         super().__init__()
         self.username = username
+        self.logout_callback = logout_callback
         self.setWindowTitle("minios")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(50, 50, 1300, 850)
         
         self.setup_ui()
         
     def setup_ui(self):
-        # Pure black background
-        self.setStyleSheet("""
-            QMainWindow {
-                background: #000000;
-            }
-            QLabel {
-                color: #ffffff;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                background: transparent;
-            }
-        """)
+        # Main container
+        main_widget = QWidget()
+        main_widget.setStyleSheet("background: #000000;")
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        central_widget = QWidget()
-        central_widget.setStyleSheet("background: #000000;")
+        # Desktop area
+        self.desktop = DesktopWidget()
+        self.desktop.iconClicked.connect(self.on_icon_clicked)
+        main_layout.addWidget(self.desktop, 1)
         
-        layout = QVBoxLayout()
-        layout.setContentsMargins(60, 60, 60, 60)
-        layout.setSpacing(30)
+        # Taskbar
+        self.taskbar = Taskbar()
+        self.taskbar.startMenuRequested.connect(self.show_start_menu)
+        main_layout.addWidget(self.taskbar)
         
-        # Title
-        title = QLabel("minios")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont("Segoe UI", 48, QFont.Weight.Light))
-        title.setStyleSheet("color: #ffffff; letter-spacing: 12px;")
-        layout.addWidget(title)
+        main_widget.setLayout(main_layout)
+        self.setCentralWidget(main_widget)
         
-        layout.addStretch()
+        # Create start menu
+        self.start_menu = StartMenu(self.taskbar)
+        self.start_menu.appLaunched.connect(self.on_app_launched)
         
-        # Welcome message with username
-        welcome = QLabel(f"welcome, {self.username}")
-        welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome.setFont(QFont("Segoe UI", 20, QFont.Weight.Light))
-        welcome.setStyleSheet("color: #666666; letter-spacing: 4px;")
-        layout.addWidget(welcome)
+    def show_start_menu(self):
+        """Show the start menu at the correct position"""
+        self.taskbar.show_start_menu(self.start_menu)
         
-        # Status line
-        status = QLabel("system ready")
-        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        status.setFont(QFont("Segoe UI", 11))
-        status.setStyleSheet("color: #333333; letter-spacing: 2px;")
-        layout.addWidget(status)
+    def on_icon_clicked(self, app_name):
+        """Handle desktop icon clicks"""
+        print(f"Desktop icon clicked: {app_name}")
         
-        layout.addStretch()
+    def on_app_launched(self, app_id):
+        """Handle start menu app launches"""
+        print(f"Launching: {app_id}")
+        if app_id == "logout":
+            self.logout()
+        elif app_id == "shutdown":
+            self.shutdown()
+        # We'll implement actual app launching in future milestones
         
-        # Divider
-        divider = QLabel("— — —")
-        divider.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        divider.setFont(QFont("Segoe UI", 10))
-        divider.setStyleSheet("color: #222222;")
-        layout.addWidget(divider)
-        
-        # Version
-        version = QLabel("v0.1.0")
-        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        version.setFont(QFont("Segoe UI", 10))
-        version.setStyleSheet("color: #222222;")
-        layout.addWidget(version)
-        
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
+    def logout(self):
+        """Logout and return to login screen"""
+        print(f"logging out user: {self.username}")
+        self.close()
+        if self.logout_callback:
+            self.logout_callback()
     
+    def shutdown(self):
+        """Shutdown the system"""
+        print("system shutting down...")
+        self.close()
+        # Exit application after a moment
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(500, lambda: sys.exit(0))
+        
     def closeEvent(self, event):
-        print("minios shutting down...")
+        print(f"desktop closed")
         event.accept()
 
 
@@ -98,13 +97,10 @@ class MiniOSApplication:
         self.app.setApplicationName("minios")
         self.app.setOrganizationName("minios")
         
-        # Create stacked widget to manage screens
-        self.stacked_widget = QStackedWidget()
-        
         # Create screens
         self.splash = MiniOSSplashScreen()
         self.login_screen = LoginScreen()
-        self.desktop = None  # Will be created after login
+        self.desktop_window = None
         
         # Connect signals
         self.splash.loadingComplete.connect(self.show_login)
@@ -128,9 +124,9 @@ class MiniOSApplication:
         print(f"login successful: {username}")
         self.login_screen.close()
         
-        # Create and show desktop
-        self.desktop = DesktopWindow(username)
-        self.desktop.show()
+        # Create desktop with logout callback
+        self.desktop_window = DesktopWindow(username, self.show_login)
+        self.desktop_window.show()
         print("desktop ready")
     
     def initialize_system(self):
