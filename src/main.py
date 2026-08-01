@@ -1,111 +1,125 @@
 """
 MiniOS - A simulated desktop operating system
-Entry point for the application
+Minimal Black Edition
 """
 
 import sys
-import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QFont, QColor, QPalette
+from PySide6.QtGui import QFont, QColor, QPalette
 
-# Import the splash screen
 from core.splash_screen import MiniOSSplashScreen
 
 
 class MainWindow(QMainWindow):
-    """Main window for MiniOS desktop"""
+    """Main window for MiniOS - Minimal Black"""
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MiniOS Desktop")
+        self.setWindowTitle("minios")
         self.setGeometry(100, 100, 1200, 800)
         
-        # Set a dark theme for now (we'll make it configurable later)
         self.setup_ui()
         
     def setup_ui(self):
-        """Setup the user interface"""
-        # Create a central widget
-        label = QLabel("Welcome to MiniOS!")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Pure black background
+        self.setStyleSheet("""
+            QMainWindow {
+                background: #000000;
+            }
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                background: transparent;
+            }
+        """)
         
-        # Style the label
-        font = QFont("Arial", 24, QFont.Weight.Bold)
-        label.setFont(font)
-        label.setStyleSheet("color: #ffffff;")
+        central_widget = QWidget()
+        central_widget.setStyleSheet("background: #000000;")
         
-        self.setCentralWidget(label)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(60, 60, 60, 60)
+        layout.setSpacing(30)
         
-        # Set background color
-        palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(30, 30, 30))
-        self.setPalette(palette)
+        # Title
+        title = QLabel("minios")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont("Segoe UI", 48, QFont.Weight.Light))
+        title.setStyleSheet("color: #ffffff; letter-spacing: 12px;")
+        layout.addWidget(title)
         
+        layout.addStretch()
+        
+        # Welcome message
+        welcome = QLabel("welcome")
+        welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        welcome.setFont(QFont("Segoe UI", 16, QFont.Weight.Light))
+        welcome.setStyleSheet("color: #666666; letter-spacing: 4px;")
+        layout.addWidget(welcome)
+        
+        # Status line
+        status = QLabel("system ready")
+        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        status.setFont(QFont("Segoe UI", 11))
+        status.setStyleSheet("color: #333333; letter-spacing: 2px;")
+        layout.addWidget(status)
+        
+        layout.addStretch()
+        
+        # Simple divider
+        divider = QLabel("— — —")
+        divider.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        divider.setFont(QFont("Segoe UI", 10))
+        divider.setStyleSheet("color: #222222;")
+        layout.addWidget(divider)
+        
+        # Version
+        version = QLabel("v0.1.0")
+        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        version.setFont(QFont("Segoe UI", 10))
+        version.setStyleSheet("color: #222222;")
+        layout.addWidget(version)
+        
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+    
     def closeEvent(self, event):
-        """Handle close event"""
-        print("MiniOS is shutting down...")
+        print("minios shutting down...")
         event.accept()
 
 
 class MiniOSApplication:
-    """Main application class for MiniOS"""
     
     def __init__(self):
         self.app = QApplication(sys.argv)
-        self.app.setApplicationName("MiniOS")
-        self.app.setOrganizationName("MiniOS")
+        self.app.setApplicationName("minios")
+        self.app.setOrganizationName("minios")
         
-        # Create splash screen first
         self.splash = MiniOSSplashScreen()
+        self.splash.loadingComplete.connect(self.show_main_window)
         
-        # Create main window (hidden initially)
         self.main_window = MainWindow()
         
     def run(self):
-        """Start the application"""
-        print("MiniOS starting...")
-        
-        # Show splash screen
+        print("minios starting...")
         self.splash.show()
-        print("Splash screen displayed")
-        
-        # Use a timer to check when splash is closed
-        self.check_splash_timer = QTimer()
-        self.check_splash_timer.timeout.connect(self.check_splash_status)
-        self.check_splash_timer.start(100)  # Check every 100ms
-        
-        # Execute the application
         sys.exit(self.app.exec())
     
-    def check_splash_status(self):
-        """Check if splash screen is still visible"""
-        if not self.splash.isVisible():
-            # Splash screen is closed, show main window
-            self.check_splash_timer.stop()
-            self.show_main_window()
-    
     def show_main_window(self):
-        """Show the main window after splash screen"""
-        print("Loading complete, showing desktop...")
+        print("desktop ready")
         self.main_window.show()
-        print("MiniOS is running!")
     
     def initialize_system(self):
-        """Initialize all system components"""
-        # We'll add more initialization here in future steps
         pass
 
 
 def main():
-    """Main entry point"""
     try:
-        # Create and run the application
         minios = MiniOSApplication()
         minios.initialize_system()
         minios.run()
     except Exception as e:
-        print(f"Fatal error: {e}")
+        print(f"error: {e}")
         sys.exit(1)
 
 

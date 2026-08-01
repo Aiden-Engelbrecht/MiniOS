@@ -1,98 +1,70 @@
 """
-Splash Screen module for MiniOS
-Displays a professional loading screen during application startup
+Splash Screen module for MiniOS - Minimal Black Edition
+Clean, minimalist dark theme
 """
 
-import sys
-import os
-from PySide6.QtWidgets import QSplashScreen, QWidget, QVBoxLayout, QLabel, QProgressBar, QApplication
-from PySide6.QtCore import Qt, QTimer, QRect
-from PySide6.QtGui import QFont, QColor, QPalette, QPixmap, QPainter, QBrush, QLinearGradient
+from PySide6.QtWidgets import QSplashScreen, QWidget, QVBoxLayout, QLabel, QProgressBar
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont, QPixmap, QColor
 
 
 class MiniOSSplashScreen(QSplashScreen):
     """
-    Custom splash screen for MiniOS with animated loading effect
+    Minimal black splash screen
     """
     
+    loadingComplete = Signal()
+    
     def __init__(self):
-        # Create a pixmap to draw on
-        self.splash_pixmap = QPixmap(600, 400)
-        self.splash_pixmap.fill(Qt.GlobalColor.transparent)
+        pixmap = QPixmap(500, 300)
+        pixmap.fill(Qt.GlobalColor.transparent)
         
-        # Initialize the splash screen with the pixmap
-        super().__init__(self.splash_pixmap)
+        super().__init__(pixmap)
         
-        # Create the widget that will be rendered onto the splash
-        self.splash_widget = QWidget()
-        self.splash_widget.setFixedSize(600, 400)
-        self.splash_widget.setStyleSheet("""
+        self.widget = QWidget()
+        self.widget.setFixedSize(500, 300)
+        self.widget.setStyleSheet("""
             QWidget {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #1a1a2e, stop:1 #16213e);
-                border-radius: 15px;
+                background: #000000;
+                border: 1px solid #333333;
+                border-radius: 8px;
             }
             QLabel {
-                color: #e0e0e0;
+                color: #ffffff;
                 font-family: 'Segoe UI', Arial, sans-serif;
+                background: transparent;
             }
             QProgressBar {
                 border: none;
-                background-color: rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-                height: 6px;
-                text-align: center;
+                background-color: #1a1a1a;
+                border-radius: 2px;
+                height: 2px;
             }
             QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #00b4d8, stop:1 #0077b6);
-                border-radius: 5px;
+                background: #888888;
+                border-radius: 2px;
             }
         """)
         
-        # Setup the UI
-        self.setup_ui()
-        
-        # Render the widget to pixmap
-        self.splash_widget.render(self.splash_pixmap)
-        self.setPixmap(self.splash_pixmap)
-        
-        # Loading progress
-        self.progress = 0
-        self.loading_timer = QTimer()
-        self.loading_timer.timeout.connect(self.update_progress)
-        self.loading_timer.start(50)  # Update every 50ms
-        
-    def setup_ui(self):
-        """Setup the splash screen UI components"""
         layout = QVBoxLayout()
+        layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
-        layout.setContentsMargins(50, 50, 50, 50)
         
-        # Logo/Title
-        title_label = QLabel("MiniOS")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_font = QFont("Segoe UI", 36, QFont.Weight.Bold)
-        title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #00b4d8; margin-bottom: 10px;")
-        layout.addWidget(title_label)
-        
-        # Subtitle
-        subtitle_label = QLabel("Next Generation Desktop Experience")
-        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_font = QFont("Segoe UI", 14)
-        subtitle_label.setFont(subtitle_font)
-        subtitle_label.setStyleSheet("color: #8899aa;")
-        layout.addWidget(subtitle_label)
+        # Title
+        title = QLabel("minios")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont("Segoe UI", 28, QFont.Weight.Light))
+        title.setStyleSheet("color: #ffffff; letter-spacing: 8px;")
+        layout.addWidget(title)
         
         layout.addStretch()
         
-        # Loading status
-        self.status_label = QLabel("Initializing system...")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setFont(QFont("Segoe UI", 11))
-        self.status_label.setStyleSheet("color: #aabbcc;")
-        layout.addWidget(self.status_label)
+        # Status
+        self.status = QLabel("initializing...")
+        self.status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status.setFont(QFont("Segoe UI", 10))
+        self.status.setStyleSheet("color: #888888; letter-spacing: 2px;")
+        layout.addWidget(self.status)
         
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -101,46 +73,50 @@ class MiniOSSplashScreen(QSplashScreen):
         self.progress_bar.setTextVisible(False)
         layout.addWidget(self.progress_bar)
         
-        # Version info
-        version_label = QLabel("Version 0.1.0")
-        version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        version_label.setFont(QFont("Segoe UI", 9))
-        version_label.setStyleSheet("color: #667788;")
-        layout.addWidget(version_label)
+        # Version
+        version = QLabel("v0.1.0")
+        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        version.setFont(QFont("Segoe UI", 9))
+        version.setStyleSheet("color: #444444;")
+        layout.addWidget(version)
         
-        self.splash_widget.setLayout(layout)
+        self.widget.setLayout(layout)
         
+        self.widget.render(pixmap)
+        self.setPixmap(pixmap)
+        
+        self.progress = 0
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_progress)
+        self.timer.start(50)
+    
     def update_progress(self):
-        """Update loading progress"""
         self.progress += 2
-        
-        # Update progress bar
         self.progress_bar.setValue(self.progress)
         
-        # Update status text based on progress
         if self.progress <= 20:
-            self.status_label.setText("Loading system components...")
+            self.status.setText("loading system...")
         elif self.progress <= 40:
-            self.status_label.setText("Initializing core services...")
+            self.status.setText("initializing core...")
         elif self.progress <= 60:
-            self.status_label.setText("Loading user environment...")
+            self.status.setText("loading services...")
         elif self.progress <= 80:
-            self.status_label.setText("Starting desktop services...")
+            self.status.setText("starting desktop...")
         elif self.progress <= 95:
-            self.status_label.setText("Finalizing setup...")
+            self.status.setText("finalizing...")
         else:
-            self.status_label.setText("Ready!")
+            self.status.setText("ready")
         
-        # Re-render the widget to update the pixmap
-        self.splash_widget.render(self.splash_pixmap)
-        self.setPixmap(self.splash_pixmap)
+        pixmap = QPixmap(500, 300)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        self.widget.render(pixmap)
+        self.setPixmap(pixmap)
         
-        # Finish loading when progress reaches 100%
         if self.progress >= 100:
-            self.loading_timer.stop()
-            self.status_label.setText("Loading complete!")
-            QTimer.singleShot(500, self.close)
-            
+            self.timer.stop()
+            self.status.setText("ready")
+            self.loadingComplete.emit()
+            QTimer.singleShot(400, self.close)
+    
     def mousePressEvent(self, event):
-        """Prevent clicking through splash screen"""
         pass
