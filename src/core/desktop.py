@@ -171,6 +171,7 @@ class DesktopIcon(QWidget):
     def mousePressEvent(self, event):
         """Handle click events"""
         if event.button() == Qt.MouseButton.LeftButton:
+            print(f"Desktop icon clicked: {self.name}")  # Debug output
             self.clicked.emit()
 
 
@@ -212,9 +213,11 @@ class DesktopWidget(QWidget):
         self.icon_widgets = []
         for name, symbol in desktop_icons:
             icon_widget = DesktopIcon(name, symbol)
+            # Connect the click signal properly
             icon_widget.clicked.connect(lambda checked, n=name: self.iconClicked.emit(n))
             icons_layout.addWidget(icon_widget)
             self.icon_widgets.append(icon_widget)
+            print(f"Created icon: {name}")  # Debug output
         
         icons_widget.setLayout(icons_layout)
         

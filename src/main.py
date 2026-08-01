@@ -1,11 +1,11 @@
 """
 MiniOS - A simulated desktop operating system
-Minimal Black Edition
+Minimal Black Edition with Window Manager
 """
 
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel
 )
 from PySide6.QtCore import Qt
 
@@ -13,6 +13,8 @@ from core.splash_screen import MiniOSSplashScreen
 from core.login_screen import LoginScreen
 from core.desktop import DesktopWidget, Taskbar
 from core.start_menu import StartMenu
+from core.window_manager import WindowManager
+from apps.sample_app import SampleAppContent
 
 
 class DesktopWindow(QMainWindow):
@@ -24,6 +26,9 @@ class DesktopWindow(QMainWindow):
         self.logout_callback = logout_callback
         self.setWindowTitle("minios")
         self.setGeometry(50, 50, 1300, 850)
+        
+        # Initialize window manager
+        self.window_manager = WindowManager()
         
         self.setup_ui()
         
@@ -37,7 +42,7 @@ class DesktopWindow(QMainWindow):
         
         # Desktop area
         self.desktop = DesktopWidget()
-        self.desktop.iconClicked.connect(self.on_icon_clicked)
+        self.desktop.iconClicked.connect(self.launch_application)
         main_layout.addWidget(self.desktop, 1)
         
         # Taskbar
@@ -50,28 +55,58 @@ class DesktopWindow(QMainWindow):
         
         # Create start menu
         self.start_menu = StartMenu(self.taskbar)
-        self.start_menu.appLaunched.connect(self.on_app_launched)
+        self.start_menu.appLaunched.connect(self.launch_application)
         
     def show_start_menu(self):
         """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
         
-    def on_icon_clicked(self, app_name):
-        """Handle desktop icon clicks"""
-        print(f"Desktop icon clicked: {app_name}")
+    def launch_application(self, app_id):
+        """Launch an application from desktop icon or start menu"""
+        print(f"Launching application: {app_id}")
         
-    def on_app_launched(self, app_id):
-        """Handle start menu app launches"""
-        print(f"Launching: {app_id}")
+        # Map app_id to window titles
+        app_map = {
+            "files": "File Explorer",
+            "terminal": "Terminal", 
+            "notepad": "Notepad",
+            "settings": "Settings",
+            "explorer": "File Explorer"
+        }
+        
+        # Handle system actions
         if app_id == "logout":
             self.logout()
+            return
         elif app_id == "shutdown":
             self.shutdown()
-        # We'll implement actual app launching in future milestones
+            return
+        
+        # Get the display name
+        display_name = app_map.get(app_id, app_id.capitalize())
+        
+        # Create content for the window
+        content = SampleAppContent(display_name)
+        
+        # Create the window with offset positions (cascade)
+        width = 500
+        height = 350
+        
+        # Different sizes for different apps
+        if app_id in ["files", "explorer"]:
+            width, height = 700, 500
+        elif app_id == "terminal":
+            width, height = 600, 450
+        elif app_id == "settings":
+            width, height = 550, 400
+            
+        self.window_manager.create_window(display_name, width, height, content)
+        print(f"Window created for: {display_name}")
         
     def logout(self):
         """Logout and return to login screen"""
         print(f"logging out user: {self.username}")
+        self.window_manager.close_all_windows()
         self.close()
         if self.logout_callback:
             self.logout_callback()
@@ -79,13 +114,13 @@ class DesktopWindow(QMainWindow):
     def shutdown(self):
         """Shutdown the system"""
         print("system shutting down...")
+        self.window_manager.close_all_windows()
         self.close()
-        # Exit application after a moment
         from PySide6.QtCore import QTimer
         QTimer.singleShot(500, lambda: sys.exit(0))
         
     def closeEvent(self, event):
-        print(f"desktop closed")
+        self.window_manager.close_all_windows()
         event.accept()
 
 
