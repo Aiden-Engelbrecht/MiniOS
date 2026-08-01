@@ -136,8 +136,11 @@ class BaseWindow(QWidget):
         self.setup_ui()
         self.setFixedSize(width, height)
         
+        # Connect signals
+        self.title_bar.minimizeRequested.connect(self.minimize_window)
+        
     def setup_ui(self):
-        # Main layout - NO margins
+        # Main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(1, 1, 1, 1)
         main_layout.setSpacing(0)
@@ -152,19 +155,19 @@ class BaseWindow(QWidget):
             }
         """)
         
-        # Frame layout - NO margins
+        # Frame layout
         frame_layout = QVBoxLayout()
         frame_layout.setContentsMargins(0, 0, 0, 0)
         frame_layout.setSpacing(0)
         
-        # Title bar - fixed height
+        # Title bar
         self.title_bar = WindowTitleBar(self.title)
         self.title_bar.closeRequested.connect(self.close)
-        self.title_bar.minimizeRequested.connect(self.showMinimized)
+        self.title_bar.minimizeRequested.connect(self.minimize_window)
         self.title_bar.maximizeRequested.connect(self.toggle_maximize)
         frame_layout.addWidget(self.title_bar)
         
-        # Content area - takes ALL remaining space
+        # Content area
         self.content_area = QWidget()
         self.content_area.setStyleSheet("""
             QWidget {
@@ -173,19 +176,33 @@ class BaseWindow(QWidget):
                 border-bottom-right-radius: 8px;
             }
         """)
-        # Content area layout - NO margins
         self.content_layout = QVBoxLayout()
         self.content_layout.setContentsMargins(0, 0, 0, 0)
         self.content_layout.setSpacing(0)
         self.content_area.setLayout(self.content_layout)
         
-        # Add content area - it will stretch to fill
-        frame_layout.addWidget(self.content_area, 1)  # 1 = stretch factor
+        frame_layout.addWidget(self.content_area, 1)
         
         self.frame.setLayout(frame_layout)
         main_layout.addWidget(self.frame)
         
         self.setLayout(main_layout)
+        
+    def minimize_window(self):
+        """Minimize the window (hide it)"""
+        self.hide()
+        # Notify manager that window was minimized
+        if self.manager:
+            self.manager.on_window_minimized(self)
+        
+    def restore_window(self):
+        """Restore a minimized window"""
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        # Notify manager
+        if self.manager:
+            self.manager.on_window_restored(self)
         
     def toggle_maximize(self):
         """Toggle between normal and maximized state"""
@@ -201,11 +218,8 @@ class BaseWindow(QWidget):
             
     def add_widget(self, widget):
         """Add a widget to the content area - fills all space"""
-        # Clear existing content
         self.clear_content()
-        # Add new widget - it will fill the content area
         self.content_layout.addWidget(widget)
-        # Make sure widget expands
         widget.setSizePolicy(
             widget.sizePolicy().Policy.Expanding,
             widget.sizePolicy().Policy.Expanding
@@ -231,11 +245,19 @@ class BaseWindow(QWidget):
 
 
 class WindowManager:
-    """Manages all open windows"""
+    """Manages all open windows with taskbar integration"""
     
-    def __init__(self):
+    def __init__(self, taskbar=None):
         self.windows = []
         self.window_counter = 0
+        self.taskbar = taskbar
+        self.minimized_windows = set()
+        
+    def set_taskbar(self, taskbar):
+        """Set the taskbar reference for window buttons"""
+        self.taskbar = taskbar
+        if taskbar:
+            taskbar.windowButtonClicked.connect(self.restore_window_from_taskbar)
         
     def create_window(self, title="Window", width=600, height=400, content_widget=None):
         """Create a new window with optional content"""
@@ -247,7 +269,6 @@ class WindowManager:
         if content_widget:
             window.add_widget(content_widget)
         else:
-            # Default content
             label = QLabel("Window")
             label.setStyleSheet("""
                 color: #666666;
@@ -257,12 +278,11 @@ class WindowManager:
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             window.add_widget(label)
         
-        # Position windows with offset (cascade effect)
+        # Position windows with offset
         offset = len(self.windows) * 30
         if offset > 200:
             offset = offset % 200
         
-        # Get desktop geometry for positioning
         from PySide6.QtWidgets import QApplication
         screen = QApplication.primaryScreen().geometry()
         max_x = screen.width() - width - 50
@@ -276,6 +296,10 @@ class WindowManager:
         # Store reference
         self.windows.append(window)
         
+        # Add to taskbar
+        if self.taskbar:
+            self.taskbar.add_window_button(window, title)
+        
         # Bring to front
         self.raise_window(window)
         
@@ -284,20 +308,65 @@ class WindowManager:
         
         return window
     
+    def minimize_window(self, window):
+        """Minimize a window"""
+        if window in self.windows:
+            window.hide()
+            self.minimized_windows.add(window)
+            if self.taskbar:
+                self.taskbar.update_window_button(window, False)
+    
+    def restore_window_from_taskbar(self, window):
+        """Restore a window from taskbar click"""
+        if window in self.minimized_windows:
+            # Window is minimized - restore it
+            window.show()
+            window.raise_()
+            window.activateWindow()
+            self.minimized_windows.remove(window)
+            if self.taskbar:
+                self.taskbar.update_window_button(window, True)
+        elif window in self.windows:
+            # Window is visible - bring to front
+            self.raise_window(window)
+            if self.taskbar:
+                self.taskbar.update_window_button(window, True)
+    
+    def on_window_minimized(self, window):
+        """Called when a window minimizes itself"""
+        if window in self.windows:
+            self.minimized_windows.add(window)
+            if self.taskbar:
+                self.taskbar.update_window_button(window, False)
+    
+    def on_window_restored(self, window):
+        """Called when a window restores itself"""
+        if window in self.minimized_windows:
+            self.minimized_windows.remove(window)
+            if self.taskbar:
+                self.taskbar.update_window_button(window, True)
+    
     def raise_window(self, window):
         """Bring a window to the front"""
         window.raise_()
         window.activateWindow()
+        # Update taskbar button
+        if self.taskbar:
+            self.taskbar.update_window_button(window, True)
         
     def remove_window(self, window):
         """Remove a window from the manager"""
         if window in self.windows:
             self.windows.remove(window)
+            if window in self.minimized_windows:
+                self.minimized_windows.remove(window)
+            if self.taskbar:
+                self.taskbar.remove_window_button(window)
             
     def close_window(self, window):
         """Close and remove a window"""
         if window in self.windows:
-            self.windows.remove(window)
+            self.remove_window(window)
             window.close()
             
     def close_all_windows(self):
@@ -305,6 +374,12 @@ class WindowManager:
         for window in self.windows[:]:
             window.close()
         self.windows.clear()
+        self.minimized_windows.clear()
+        if self.taskbar:
+            # Clear all taskbar buttons
+            for btn in self.taskbar.window_buttons.values():
+                btn.deleteLater()
+            self.taskbar.window_buttons.clear()
         
     def get_window_count(self):
         """Get number of open windows"""

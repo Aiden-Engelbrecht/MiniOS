@@ -11,13 +11,15 @@ from PySide6.QtGui import QFont
 
 
 class Taskbar(QWidget):
-    """Minimal taskbar at the bottom of the screen"""
+    """Minimal taskbar at the bottom of the screen with window buttons"""
     
     startMenuRequested = Signal()
+    windowButtonClicked = Signal(object)  # Emits window object when clicked
     
     def __init__(self):
         super().__init__()
         self.setFixedHeight(40)
+        self.window_buttons = {}  # window -> button mapping
         self.setup_ui()
         self.setup_clock()
         
@@ -46,6 +48,25 @@ class Taskbar(QWidget):
                 background: #1a1a1a;
                 border-radius: 3px;
             }
+            QPushButton#window_btn {
+                background: #0d0d0d;
+                border: 1px solid #1a1a1a;
+                border-radius: 3px;
+                color: #888888;
+                padding: 4px 12px;
+                font-size: 10px;
+                max-width: 150px;
+            }
+            QPushButton#window_btn:hover {
+                background: #1a1a1a;
+                color: #ffffff;
+                border: 1px solid #2a2a2a;
+            }
+            QPushButton#window_btn:checked {
+                background: #1a1a1a;
+                color: #ffffff;
+                border: 1px solid #333333;
+            }
             QFrame#separator {
                 background: #1a1a1a;
                 max-width: 1px;
@@ -55,7 +76,7 @@ class Taskbar(QWidget):
         
         layout = QHBoxLayout()
         layout.setContentsMargins(10, 4, 14, 4)
-        layout.setSpacing(10)
+        layout.setSpacing(8)
         
         # Start button
         self.start_button = QPushButton("◆ minios")
@@ -69,11 +90,14 @@ class Taskbar(QWidget):
         sep.setObjectName("separator")
         layout.addWidget(sep)
         
-        # Taskbar items placeholder
-        self.task_label = QLabel("desktop")
-        self.task_label.setFont(QFont("Segoe UI", 9))
-        self.task_label.setStyleSheet("color: #555555;")
-        layout.addWidget(self.task_label)
+        # Window buttons container (dynamic)
+        self.window_container = QWidget()
+        self.window_container.setStyleSheet("background: transparent;")
+        self.window_layout = QHBoxLayout()
+        self.window_layout.setContentsMargins(0, 0, 0, 0)
+        self.window_layout.setSpacing(5)
+        self.window_container.setLayout(self.window_layout)
+        layout.addWidget(self.window_container)
         
         layout.addStretch()
         
@@ -103,6 +127,46 @@ class Taskbar(QWidget):
         button_pos = self.start_button.mapToGlobal(QPoint(0, 0))
         menu.move(button_pos.x(), button_pos.y() - menu.height() - 2)
         menu.exec_()
+    
+    def add_window_button(self, window, title):
+        """Add a button for a window to the taskbar"""
+        # Check if button already exists
+        if window in self.window_buttons:
+            return
+        
+        # Create button
+        btn = QPushButton(f"◈ {title[:15]}")
+        btn.setObjectName("window_btn")
+        btn.setCheckable(True)
+        btn.setChecked(True)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.clicked.connect(lambda: self.windowButtonClicked.emit(window))
+        
+        # Store reference
+        self.window_buttons[window] = btn
+        
+        # Add to layout
+        self.window_layout.addWidget(btn)
+        
+        # Update container visibility
+        self.window_container.setVisible(True)
+        
+    def remove_window_button(self, window):
+        """Remove a window button from the taskbar"""
+        if window in self.window_buttons:
+            btn = self.window_buttons[window]
+            self.window_layout.removeWidget(btn)
+            btn.deleteLater()
+            del self.window_buttons[window]
+            
+            # Hide container if no buttons
+            if len(self.window_buttons) == 0:
+                self.window_container.setVisible(False)
+    
+    def update_window_button(self, window, is_active):
+        """Update the active state of a window button"""
+        if window in self.window_buttons:
+            self.window_buttons[window].setChecked(is_active)
 
 
 class DesktopIcon(QWidget):
@@ -213,11 +277,9 @@ class DesktopWidget(QWidget):
         self.icon_widgets = []
         for name, symbol in desktop_icons:
             icon_widget = DesktopIcon(name, symbol)
-            # Connect the signal - use a proper function instead of lambda with checked
             icon_widget.clicked.connect(self.create_icon_click_handler(name))
             icons_layout.addWidget(icon_widget)
             self.icon_widgets.append(icon_widget)
-            print(f"Created icon: {name}")
         
         icons_widget.setLayout(icons_layout)
         
@@ -229,6 +291,5 @@ class DesktopWidget(QWidget):
     def create_icon_click_handler(self, name):
         """Create a handler function for icon clicks"""
         def handler():
-            print(f"Icon clicked, emitting: {name}")
             self.iconClicked.emit(name)
         return handler

@@ -27,9 +27,6 @@ class DesktopWindow(QMainWindow):
         self.setWindowTitle("minios")
         self.setGeometry(50, 50, 1300, 850)
         
-        # Initialize window manager
-        self.window_manager = WindowManager()
-        
         self.setup_ui()
         
     def setup_ui(self):
@@ -52,6 +49,9 @@ class DesktopWindow(QMainWindow):
         
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
+        
+        # Initialize window manager with taskbar reference
+        self.window_manager = WindowManager(self.taskbar)
         
         # Create start menu
         self.start_menu = StartMenu(self.taskbar)
