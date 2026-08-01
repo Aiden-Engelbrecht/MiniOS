@@ -119,14 +119,14 @@ class WindowTitleBar(QWidget):
 
 
 class BaseWindow(QWidget):
-    """Base window class with title bar and resizing"""
+    """Base window class with title bar and content area"""
     
     def __init__(self, title="Window", width=600, height=400, manager=None):
         super().__init__()
         self.title = title
         self.width = width
         self.height = height
-        self.manager = manager  # Reference to window manager
+        self.manager = manager
         self.is_maximized = False
         self.normal_geometry = None
         
@@ -137,12 +137,12 @@ class BaseWindow(QWidget):
         self.setFixedSize(width, height)
         
     def setup_ui(self):
-        # Main layout
+        # Main layout - NO margins
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(1, 1, 1, 1)
         main_layout.setSpacing(0)
         
-        # Frame for content
+        # Frame that holds everything
         self.frame = QFrame()
         self.frame.setStyleSheet("""
             QFrame {
@@ -151,18 +151,20 @@ class BaseWindow(QWidget):
                 border-radius: 8px;
             }
         """)
+        
+        # Frame layout - NO margins
         frame_layout = QVBoxLayout()
         frame_layout.setContentsMargins(0, 0, 0, 0)
         frame_layout.setSpacing(0)
         
-        # Title bar
+        # Title bar - fixed height
         self.title_bar = WindowTitleBar(self.title)
         self.title_bar.closeRequested.connect(self.close)
         self.title_bar.minimizeRequested.connect(self.showMinimized)
         self.title_bar.maximizeRequested.connect(self.toggle_maximize)
         frame_layout.addWidget(self.title_bar)
         
-        # Content area
+        # Content area - takes ALL remaining space
         self.content_area = QWidget()
         self.content_area.setStyleSheet("""
             QWidget {
@@ -171,10 +173,14 @@ class BaseWindow(QWidget):
                 border-bottom-right-radius: 8px;
             }
         """)
+        # Content area layout - NO margins
         self.content_layout = QVBoxLayout()
-        self.content_layout.setContentsMargins(20, 20, 20, 20)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(0)
         self.content_area.setLayout(self.content_layout)
-        frame_layout.addWidget(self.content_area)
+        
+        # Add content area - it will stretch to fill
+        frame_layout.addWidget(self.content_area, 1)  # 1 = stretch factor
         
         self.frame.setLayout(frame_layout)
         main_layout.addWidget(self.frame)
@@ -194,8 +200,23 @@ class BaseWindow(QWidget):
             self.is_maximized = False
             
     def add_widget(self, widget):
-        """Add a widget to the content area"""
+        """Add a widget to the content area - fills all space"""
+        # Clear existing content
+        self.clear_content()
+        # Add new widget - it will fill the content area
         self.content_layout.addWidget(widget)
+        # Make sure widget expands
+        widget.setSizePolicy(
+            widget.sizePolicy().Policy.Expanding,
+            widget.sizePolicy().Policy.Expanding
+        )
+        
+    def clear_content(self):
+        """Clear all widgets from content area"""
+        while self.content_layout.count():
+            item = self.content_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         
     def set_title(self, title):
         """Update window title"""
@@ -238,7 +259,6 @@ class WindowManager:
         
         # Position windows with offset (cascade effect)
         offset = len(self.windows) * 30
-        # Keep offset within reasonable bounds
         if offset > 200:
             offset = offset % 200
         
@@ -248,7 +268,6 @@ class WindowManager:
         max_x = screen.width() - width - 50
         max_y = screen.height() - height - 100
         
-        # Ensure window doesn't go off screen
         x_pos = min(50 + offset, max_x)
         y_pos = min(50 + offset, max_y)
         
