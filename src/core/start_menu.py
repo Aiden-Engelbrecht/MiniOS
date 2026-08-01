@@ -78,7 +78,8 @@ class StartMenu(QMenu):
         
         for label, app_id in apps:
             action = QAction(label, self)
-            action.triggered.connect(lambda checked, app=app_id: self.appLaunched.emit(app))
+            # Use a proper function instead of lambda with checked
+            action.triggered.connect(self.create_app_launcher(app_id))
             self.addAction(action)
         
         self.addSeparator()
@@ -92,11 +93,16 @@ class StartMenu(QMenu):
         shutdown_action.triggered.connect(lambda: self.appLaunched.emit("shutdown"))
         self.addAction(shutdown_action)
     
+    def create_app_launcher(self, app_id):
+        """Create a handler function for app launches"""
+        def handler():
+            print(f"Start menu launching: {app_id}")
+            self.appLaunched.emit(app_id)
+        return handler
+    
     def showEvent(self, event):
         """Position menu above the taskbar"""
         super().showEvent(event)
-        # Get the global position of the parent button
         if self.parent():
-            # Calculate position: above the button
             button_pos = self.parent().mapToGlobal(QPoint(0, 0))
             self.move(button_pos.x(), button_pos.y() - self.height() - 5)

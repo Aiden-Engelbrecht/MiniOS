@@ -121,11 +121,12 @@ class WindowTitleBar(QWidget):
 class BaseWindow(QWidget):
     """Base window class with title bar and resizing"""
     
-    def __init__(self, title="Window", width=600, height=400, parent=None):
-        super().__init__(parent)
+    def __init__(self, title="Window", width=600, height=400, manager=None):
+        super().__init__()
         self.title = title
         self.width = width
         self.height = height
+        self.manager = manager  # Reference to window manager
         self.is_maximized = False
         self.normal_geometry = None
         
@@ -202,11 +203,9 @@ class BaseWindow(QWidget):
         self.title_bar.title_label.setText(title)
         
     def closeEvent(self, event):
-        """Handle window close"""
-        # Notify parent window manager
-        if self.parent():
-            if hasattr(self.parent(), 'remove_window'):
-                self.parent().remove_window(self)
+        """Handle window close - notify manager"""
+        if self.manager:
+            self.manager.remove_window(self)
         event.accept()
 
 
@@ -221,9 +220,8 @@ class WindowManager:
         """Create a new window with optional content"""
         self.window_counter += 1
         
-        # Create window
-        window = BaseWindow(title, width, height)
-        window.parent = self  # So window can notify manager when closed
+        # Create window with manager reference
+        window = BaseWindow(title, width, height, manager=self)
         
         if content_widget:
             window.add_widget(content_widget)
@@ -241,8 +239,8 @@ class WindowManager:
         # Position windows with offset (cascade effect)
         offset = len(self.windows) * 30
         # Keep offset within reasonable bounds
-        if offset > 150:
-            offset = offset % 150
+        if offset > 200:
+            offset = offset % 200
         
         # Get desktop geometry for positioning
         from PySide6.QtWidgets import QApplication
@@ -270,7 +268,6 @@ class WindowManager:
     def raise_window(self, window):
         """Bring a window to the front"""
         window.raise_()
-        # Make sure it's on top of all other windows
         window.activateWindow()
         
     def remove_window(self, window):

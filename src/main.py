@@ -5,7 +5,7 @@ Minimal Black Edition with Window Manager
 
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel
+    QApplication, QMainWindow, QWidget, QVBoxLayout
 )
 from PySide6.QtCore import Qt
 
@@ -65,15 +65,6 @@ class DesktopWindow(QMainWindow):
         """Launch an application from desktop icon or start menu"""
         print(f"Launching application: {app_id}")
         
-        # Map app_id to window titles
-        app_map = {
-            "files": "File Explorer",
-            "terminal": "Terminal", 
-            "notepad": "Notepad",
-            "settings": "Settings",
-            "explorer": "File Explorer"
-        }
-        
         # Handle system actions
         if app_id == "logout":
             self.logout()
@@ -82,24 +73,31 @@ class DesktopWindow(QMainWindow):
             self.shutdown()
             return
         
-        # Get the display name
-        display_name = app_map.get(app_id, app_id.capitalize())
+        # Map app_id to display names
+        app_names = {
+            "files": "File Explorer",
+            "explorer": "File Explorer",
+            "terminal": "Terminal", 
+            "notepad": "Notepad",
+            "settings": "Settings"
+        }
         
-        # Create content for the window
-        content = SampleAppContent(display_name)
-        
-        # Create the window with offset positions (cascade)
-        width = 500
-        height = 350
+        display_name = app_names.get(app_id, app_id.capitalize())
         
         # Different sizes for different apps
-        if app_id in ["files", "explorer"]:
-            width, height = 700, 500
-        elif app_id == "terminal":
-            width, height = 600, 450
-        elif app_id == "settings":
-            width, height = 550, 400
-            
+        size_map = {
+            "files": (700, 500),
+            "explorer": (700, 500),
+            "terminal": (600, 450),
+            "notepad": (500, 350),
+            "settings": (550, 400)
+        }
+        width, height = size_map.get(app_id, (500, 350))
+        
+        # Create content
+        content = SampleAppContent(display_name)
+        
+        # Create the window
         self.window_manager.create_window(display_name, width, height, content)
         print(f"Window created for: {display_name}")
         
