@@ -17,6 +17,7 @@ from core.window_manager import WindowManager
 from apps.sample_app import SampleAppContent
 from apps.file_explorer import FileExplorerWidget
 from apps.notepad import NotepadWidget
+from apps.terminal import TerminalWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -80,7 +81,7 @@ class DesktopWindow(QMainWindow):
             "files": ("File Explorer", 800, 600, FileExplorerWidget()),
             "explorer": ("File Explorer", 800, 600, FileExplorerWidget()),
             "notepad": ("Notepad", 700, 500, NotepadWidget()),
-            "terminal": ("Terminal", 600, 450, SampleAppContent("Terminal")),
+            "terminal": ("Terminal", 800, 500, TerminalWidget()),
             "settings": ("Settings", 550, 400, SampleAppContent("Settings"))
         }
         
