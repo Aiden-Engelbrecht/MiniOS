@@ -7,18 +7,25 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QListWidget, QListWidgetItem,
     QStackedWidget, QCheckBox, QSlider, QComboBox,
-    QLineEdit, QFileDialog, QMessageBox
+    QLineEdit, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
+
+from core.settings_manager import SettingsManager
 
 
 class SettingsWidget(QWidget):
     """Settings application widget"""
     
+    # Signal to notify parent about settings changes
+    settingsApplied = Signal()
+    
     def __init__(self):
         super().__init__()
+        self.settings_manager = SettingsManager()
         self.setup_ui()
+        self.load_settings()
         
     def setup_ui(self):
         self.setStyleSheet("""
@@ -63,6 +70,15 @@ class SettingsWidget(QWidget):
             QPushButton#apply_btn:hover {
                 background: #3a5a3a;
                 border: 1px solid #4a6a4a;
+            }
+            QPushButton#danger_btn {
+                background: #4a2a2a;
+                border: 1px solid #5a3a3a;
+                color: #ff8888;
+            }
+            QPushButton#danger_btn:hover {
+                background: #5a3a3a;
+                border: 1px solid #6a4a4a;
             }
             QListWidget {
                 background: #0d0d0d;
@@ -238,6 +254,32 @@ class SettingsWidget(QWidget):
         
         self.setLayout(layout)
         
+        # Status label at bottom
+        self.status_label = QLabel("Ready")
+        self.status_label.setStyleSheet("color: #444444; font-size: 11px; padding: 5px 10px;")
+        layout.addWidget(self.status_label)
+        
+    def load_settings(self):
+        """Load settings from manager"""
+        # General
+        username = self.settings_manager.get('general.username', 'minios_user')
+        self.username_input.setText(username)
+        
+        lang = self.settings_manager.get('general.language', 'English (US)')
+        index = self.lang_combo.findText(lang)
+        if index >= 0:
+            self.lang_combo.setCurrentIndex(index)
+        
+        # Appearance
+        theme = self.settings_manager.get('appearance.theme', 'dark')
+        index = self.theme_combo.findText(theme.capitalize())
+        if index >= 0:
+            self.theme_combo.setCurrentIndex(index)
+        
+        font_size = self.settings_manager.get('appearance.font_size', 13)
+        self.font_slider.setValue(font_size)
+        self.font_size_label.setText(f"{font_size}px")
+        
     def switch_category(self, item):
         """Switch to the selected category page"""
         index = self.category_list.row(item)
@@ -255,7 +297,7 @@ class SettingsWidget(QWidget):
         name_label.setObjectName("section_title")
         layout.addWidget(name_label)
         
-        self.username_input = QLineEdit("minios_user")
+        self.username_input = QLineEdit()
         self.username_input.setMaximumWidth(250)
         layout.addWidget(self.username_input)
         
@@ -300,7 +342,7 @@ class SettingsWidget(QWidget):
         layout.addWidget(theme_label)
         
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["Dark (Default)", "Light", "Cyber", "Minimal"])
+        self.theme_combo.addItems(["Dark", "Light"])
         self.theme_combo.setMaximumWidth(200)
         layout.addWidget(self.theme_combo)
         
@@ -366,7 +408,7 @@ class SettingsWidget(QWidget):
             ("Architecture:", "x86_64"),
             ("Python:", "3.13+"),
             ("UI Framework:", "PySide6"),
-            ("User:", "minios_user")
+            ("User:", self.settings_manager.get('general.username', 'minios_user'))
         ]
         
         for label, value in info_items:
@@ -393,12 +435,18 @@ class SettingsWidget(QWidget):
         actions_layout.setSpacing(10)
         
         logout_btn = QPushButton("Logout")
+        logout_btn.setObjectName("danger_btn")
         logout_btn.clicked.connect(self.logout_system)
         actions_layout.addWidget(logout_btn)
         
         shutdown_btn = QPushButton("Shutdown")
+        shutdown_btn.setObjectName("danger_btn")
         shutdown_btn.clicked.connect(self.shutdown_system)
         actions_layout.addWidget(shutdown_btn)
+        
+        restart_btn = QPushButton("Restart")
+        restart_btn.clicked.connect(self.restart_system)
+        actions_layout.addWidget(restart_btn)
         
         actions_layout.addStretch()
         layout.addLayout(actions_layout)
@@ -470,23 +518,49 @@ class SettingsWidget(QWidget):
         username = self.username_input.text().strip()
         lang = self.lang_combo.currentText()
         
-        if username:
-            QMessageBox.information(
-                self, "Settings Applied",
-                f"Settings updated!\n\nUsername: {username}\nLanguage: {lang}"
-            )
-        else:
+        if not username:
             QMessageBox.warning(self, "Error", "Username cannot be empty")
-    
-    def apply_appearance_settings(self):
-        """Apply appearance settings changes"""
-        theme = self.theme_combo.currentText()
-        font_size = self.font_slider.value()
+            return
+        
+        # Save settings
+        self.settings_manager.set('general.username', username)
+        self.settings_manager.set('general.language', lang)
+        
+        self.status_label.setText(f"✓ Settings saved: Username: {username}, Language: {lang}")
+        self.status_label.setStyleSheet("color: #88ff88; font-size: 11px; padding: 5px 10px;")
         
         QMessageBox.information(
             self, "Settings Applied",
-            f"Theme: {theme}\nFont Size: {font_size}px\n\nRestart required for changes to take effect."
+            f"Settings updated!\n\nUsername: {username}\nLanguage: {lang}"
         )
+        
+        # Emit signal for parent to update
+        self.settingsApplied.emit()
+    
+    def apply_appearance_settings(self):
+        """Apply appearance settings changes"""
+        theme = self.theme_combo.currentText().lower()
+        font_size = self.font_slider.value()
+        
+        # Save settings
+        self.settings_manager.set('appearance.theme', theme)
+        self.settings_manager.set('appearance.font_size', font_size)
+        
+        # Apply to application
+        app = self.window().window()
+        self.settings_manager.apply_theme(app, theme)
+        self.settings_manager.apply_font_size(app, font_size)
+        
+        self.status_label.setText(f"✓ Theme: {theme.capitalize()}, Font Size: {font_size}px")
+        self.status_label.setStyleSheet("color: #88ff88; font-size: 11px; padding: 5px 10px;")
+        
+        QMessageBox.information(
+            self, "Settings Applied",
+            f"Theme: {theme.capitalize()}\nFont Size: {font_size}px"
+        )
+        
+        # Emit signal for parent to update
+        self.settingsApplied.emit()
     
     def logout_system(self):
         """Trigger logout"""
@@ -518,3 +592,24 @@ class SettingsWidget(QWidget):
                     parent.shutdown()
                     break
                 parent = parent.parent()
+    
+    def restart_system(self):
+        """Trigger restart (logout then auto-login)"""
+        reply = QMessageBox.question(
+            self, "Restart",
+            "Are you sure you want to restart the system?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            # For now, just logout
+            parent = self.parent()
+            while parent:
+                if hasattr(parent, 'logout'):
+                    parent.logout()
+                    break
+                parent = parent.parent()
+    
+    def showEvent(self, event):
+        """Reload settings when shown"""
+        self.load_settings()
+        super().showEvent(event)

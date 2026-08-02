@@ -14,6 +14,7 @@ from core.login_screen import LoginScreen
 from core.desktop import DesktopWidget, Taskbar
 from core.start_menu import StartMenu
 from core.window_manager import WindowManager
+from core.settings_manager import SettingsManager
 from apps.sample_app import SampleAppContent
 from apps.file_explorer import FileExplorerWidget
 from apps.notepad import NotepadWidget
@@ -28,10 +29,12 @@ class DesktopWindow(QMainWindow):
         super().__init__()
         self.username = username
         self.logout_callback = logout_callback
+        self.settings_manager = SettingsManager()
         self.setWindowTitle("minios")
         self.setGeometry(50, 50, 1300, 850)
         
         self.setup_ui()
+        self.apply_settings()
         
     def setup_ui(self):
         # Main container
@@ -61,6 +64,16 @@ class DesktopWindow(QMainWindow):
         self.start_menu = StartMenu(self.taskbar)
         self.start_menu.appLaunched.connect(self.launch_application)
         
+    def apply_settings(self):
+        """Apply system settings"""
+        # Apply theme
+        theme = self.settings_manager.get('appearance.theme', 'dark')
+        self.settings_manager.apply_theme(self, theme)
+        
+        # Apply font size
+        font_size = self.settings_manager.get('appearance.font_size', 13)
+        self.settings_manager.apply_font_size(self, font_size)
+        
     def show_start_menu(self):
         """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
@@ -88,7 +101,12 @@ class DesktopWindow(QMainWindow):
         
         if app_id in app_map:
             title, width, height, content = app_map[app_id]
-            self.window_manager.create_window(title, width, height, content)
+            window = self.window_manager.create_window(title, width, height, content)
+            
+            # If settings, connect the settingsApplied signal
+            if isinstance(content, SettingsWidget):
+                content.settingsApplied.connect(self.apply_settings)
+            
             print(f"Window created for: {title}")
         else:
             # Unknown app
@@ -123,6 +141,16 @@ class MiniOSApplication:
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("minios")
         self.app.setOrganizationName("minios")
+        
+        # Load settings
+        self.settings_manager = SettingsManager()
+        
+        # Apply initial settings
+        theme = self.settings_manager.get('appearance.theme', 'dark')
+        self.settings_manager.apply_theme(self.app, theme)
+        
+        font_size = self.settings_manager.get('appearance.font_size', 13)
+        self.settings_manager.apply_font_size(self.app, font_size)
         
         # Create screens
         self.splash = MiniOSSplashScreen()
