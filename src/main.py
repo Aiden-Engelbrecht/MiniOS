@@ -38,7 +38,6 @@ class DesktopWindow(QMainWindow):
     def setup_ui(self):
         # Main container
         main_widget = QWidget()
-        main_widget.setStyleSheet("background: #000000;")
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)

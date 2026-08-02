@@ -6,7 +6,7 @@ Handles loading, saving, and applying system settings
 import json
 import os
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPalette, QColor
 
 
 class SettingsManager(QObject):
@@ -84,112 +84,201 @@ class SettingsManager(QObject):
         self.save_settings()
         self.settingsChanged.emit()
     
-    def get_theme_stylesheet(self, theme):
-        """Get the stylesheet for a theme"""
+    def apply_theme_to_app(self, app, theme):
+        """Apply theme to the entire application"""
+        self.current_theme = theme
+        
         if theme == "dark":
-            return """
+            # DARK THEME - Original MiniOS look
+            app.setStyleSheet("""
+                /* Global dark theme */
                 QMainWindow, QWidget {
-                    background: #000000;
+                    background-color: #000000;
                     color: #cccccc;
                 }
                 QLabel {
                     color: #888888;
+                    background: transparent;
                 }
                 QPushButton {
-                    background: #1a1a1a;
+                    background-color: #1a1a1a;
                     border: 1px solid #2a2a2a;
                     color: #888888;
+                    border-radius: 4px;
+                    padding: 5px 10px;
                 }
                 QPushButton:hover {
-                    background: #2a2a2a;
+                    background-color: #2a2a2a;
                     color: #ffffff;
                 }
                 QLineEdit, QTextEdit {
-                    background: #1a1a1a;
+                    background-color: #1a1a1a;
                     border: 1px solid #2a2a2a;
                     color: #888888;
+                    padding: 5px;
                 }
                 QListWidget {
-                    background: #0d0d0d;
+                    background-color: #0d0d0d;
                     color: #888888;
+                    border: none;
                 }
                 QListWidget::item:selected {
-                    background: #2a2a2a;
+                    background-color: #2a2a2a;
                     color: #ffffff;
                 }
                 QMenu {
-                    background: #0a0a0a;
+                    background-color: #0a0a0a;
                     border: 1px solid #1a1a1a;
                     color: #cccccc;
                 }
                 QMenu::item:selected {
-                    background: #1a1a1a;
+                    background-color: #1a1a1a;
                     color: #ffffff;
                 }
                 QFrame {
-                    background: transparent;
+                    background-color: transparent;
                 }
-            """
-        else:  # light
-            return """
+                QScrollBar:vertical {
+                    background-color: #0d0d0d;
+                    width: 10px;
+                }
+                QScrollBar::handle:vertical {
+                    background-color: #2a2a2a;
+                    border-radius: 5px;
+                }
+                QScrollBar::handle:vertical:hover {
+                    background-color: #3a3a3a;
+                }
+                QTabWidget::pane {
+                    background-color: #0d0d0d;
+                    border: 1px solid #1a1a1a;
+                }
+                QTabBar::tab {
+                    background-color: #0d0d0d;
+                    color: #888888;
+                    padding: 5px 10px;
+                }
+                QTabBar::tab:selected {
+                    background-color: #1a1a1a;
+                    color: #ffffff;
+                }
+            """)
+            
+            # Set dark palette
+            palette = QPalette()
+            palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(204, 204, 204))
+            palette.setColor(QPalette.ColorRole.Base, QColor(13, 13, 13))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(20, 20, 20))
+            palette.setColor(QPalette.ColorRole.Text, QColor(204, 204, 204))
+            palette.setColor(QPalette.ColorRole.Button, QColor(26, 26, 26))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor(204, 204, 204))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 42, 42))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+            app.setPalette(palette)
+            
+        else:
+            # LIGHT THEME
+            app.setStyleSheet("""
+                /* Light theme */
                 QMainWindow, QWidget {
-                    background: #f0f0f0;
+                    background-color: #f0f0f0;
                     color: #333333;
                 }
                 QLabel {
-                    color: #666666;
+                    color: #555555;
+                    background: transparent;
                 }
                 QPushButton {
-                    background: #e0e0e0;
+                    background-color: #e0e0e0;
                     border: 1px solid #cccccc;
                     color: #333333;
+                    border-radius: 4px;
+                    padding: 5px 10px;
                 }
                 QPushButton:hover {
-                    background: #d0d0d0;
+                    background-color: #d0d0d0;
                     color: #000000;
                 }
                 QLineEdit, QTextEdit {
-                    background: #ffffff;
+                    background-color: #ffffff;
                     border: 1px solid #cccccc;
                     color: #333333;
+                    padding: 5px;
                 }
                 QListWidget {
-                    background: #f0f0f0;
+                    background-color: #f0f0f0;
                     color: #333333;
+                    border: none;
                 }
                 QListWidget::item:selected {
-                    background: #cccccc;
+                    background-color: #d0d0d0;
                     color: #000000;
                 }
                 QMenu {
-                    background: #f0f0f0;
+                    background-color: #f0f0f0;
                     border: 1px solid #cccccc;
                     color: #333333;
                 }
                 QMenu::item:selected {
-                    background: #d0d0d0;
+                    background-color: #d0d0d0;
                     color: #000000;
                 }
                 QFrame {
-                    background: transparent;
+                    background-color: transparent;
                 }
-            """
-    
-    def apply_theme_to_app(self, app, theme):
-        """Apply theme to the entire application"""
-        self.current_theme = theme
-        stylesheet = self.get_theme_stylesheet(theme)
-        app.setStyleSheet(stylesheet)
+                QScrollBar:vertical {
+                    background-color: #f0f0f0;
+                    width: 10px;
+                }
+                QScrollBar::handle:vertical {
+                    background-color: #cccccc;
+                    border-radius: 5px;
+                }
+                QScrollBar::handle:vertical:hover {
+                    background-color: #bbbbbb;
+                }
+                QTabWidget::pane {
+                    background-color: #f0f0f0;
+                    border: 1px solid #cccccc;
+                }
+                QTabBar::tab {
+                    background-color: #e8e8e8;
+                    color: #555555;
+                    padding: 5px 10px;
+                }
+                QTabBar::tab:selected {
+                    background-color: #f0f0f0;
+                    color: #000000;
+                }
+            """)
+            
+            # Set light palette
+            palette = QPalette()
+            palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(50, 50, 50))
+            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(245, 245, 245))
+            palette.setColor(QPalette.ColorRole.Text, QColor(50, 50, 50))
+            palette.setColor(QPalette.ColorRole.Button, QColor(230, 230, 230))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor(50, 50, 50))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(200, 200, 200))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
+            app.setPalette(palette)
         
-        # Also update all top-level widgets
+        # Update all top-level widgets
         for widget in app.topLevelWidgets():
-            widget.setStyleSheet(stylesheet)
+            widget.update()
     
     def apply_font_size_to_app(self, app, size):
         """Apply font size to the entire application"""
         self.current_font_size = size
         font = QFont("Segoe UI", size)
         app.setFont(font)
+        
+        # Update all widgets
+        for widget in app.allWidgets():
+            widget.setFont(font)
     
     def apply_all_settings(self, app):
         """Apply all settings to the application"""

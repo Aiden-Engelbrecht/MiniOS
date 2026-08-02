@@ -36,9 +36,10 @@ class SettingsWidget(QWidget):
             QWidget {
                 background: #0d0d0d;
                 font-family: 'Segoe UI', Arial, sans-serif;
+                color: #cccccc;
             }
             QLabel {
-                color: #cccccc;
+                color: #888888;
                 background: transparent;
             }
             QLabel#title {
@@ -137,13 +138,6 @@ class SettingsWidget(QWidget):
             QComboBox::drop-down {
                 border: none;
             }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #888888;
-                margin-right: 5px;
-            }
             QComboBox QAbstractItemView {
                 background: #1a1a1a;
                 border: 1px solid #2a2a2a;
@@ -157,9 +151,6 @@ class SettingsWidget(QWidget):
                 color: #888888;
                 padding: 8px 12px;
                 font-size: 13px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #3a3a3a;
             }
         """)
         
@@ -509,7 +500,12 @@ class SettingsWidget(QWidget):
             if self.desktop:
                 self.desktop.logout()
             else:
-                QMessageBox.warning(self, "Error", "Desktop not found")
+                parent = self.parent()
+                while parent:
+                    if hasattr(parent, 'logout'):
+                        parent.logout()
+                        break
+                    parent = parent.parent()
     
     def shutdown_system(self):
         reply = QMessageBox.question(
@@ -521,7 +517,12 @@ class SettingsWidget(QWidget):
             if self.desktop:
                 self.desktop.shutdown()
             else:
-                QMessageBox.warning(self, "Error", "Desktop not found")
+                parent = self.parent()
+                while parent:
+                    if hasattr(parent, 'shutdown'):
+                        parent.shutdown()
+                        break
+                    parent = parent.parent()
     
     def restart_system(self):
         reply = QMessageBox.question(
@@ -533,7 +534,12 @@ class SettingsWidget(QWidget):
             if self.desktop:
                 self.desktop.logout()
             else:
-                QMessageBox.warning(self, "Error", "Desktop not found")
+                parent = self.parent()
+                while parent:
+                    if hasattr(parent, 'logout'):
+                        parent.logout()
+                        break
+                    parent = parent.parent()
     
     def showEvent(self, event):
         self.load_settings()
