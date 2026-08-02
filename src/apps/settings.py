@@ -6,8 +6,8 @@ System preferences and configuration
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QListWidget, QListWidgetItem,
-    QStackedWidget, QCheckBox, QSlider, QComboBox,
-    QLineEdit, QMessageBox
+    QStackedWidget, QSlider, QComboBox,
+    QLineEdit, QMessageBox, QApplication
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
@@ -18,14 +18,18 @@ from core.settings_manager import SettingsManager
 class SettingsWidget(QWidget):
     """Settings application widget"""
     
-    # Signal to notify parent about settings changes
     settingsApplied = Signal()
     
     def __init__(self):
         super().__init__()
         self.settings_manager = SettingsManager()
+        self.desktop = None
         self.setup_ui()
         self.load_settings()
+        
+    def set_desktop(self, desktop):
+        """Set the desktop reference for system actions"""
+        self.desktop = desktop
         
     def setup_ui(self):
         self.setStyleSheet("""
@@ -34,7 +38,7 @@ class SettingsWidget(QWidget):
                 font-family: 'Segoe UI', Arial, sans-serif;
             }
             QLabel {
-                color: #888888;
+                color: #cccccc;
                 background: transparent;
             }
             QLabel#title {
@@ -60,7 +64,6 @@ class SettingsWidget(QWidget):
             QPushButton:hover {
                 background: #2a2a2a;
                 color: #ffffff;
-                border: 1px solid #3a3a3a;
             }
             QPushButton#apply_btn {
                 background: #2a4a2a;
@@ -69,7 +72,6 @@ class SettingsWidget(QWidget):
             }
             QPushButton#apply_btn:hover {
                 background: #3a5a3a;
-                border: 1px solid #4a6a4a;
             }
             QPushButton#danger_btn {
                 background: #4a2a2a;
@@ -78,7 +80,6 @@ class SettingsWidget(QWidget):
             }
             QPushButton#danger_btn:hover {
                 background: #5a3a3a;
-                border: 1px solid #6a4a4a;
             }
             QListWidget {
                 background: #0d0d0d;
@@ -110,42 +111,17 @@ class SettingsWidget(QWidget):
                 border-radius: 8px;
                 padding: 10px;
             }
-            QCheckBox {
-                color: #888888;
-                spacing: 10px;
-                font-size: 13px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border: 1px solid #2a2a2a;
-                border-radius: 3px;
-                background: #0d0d0d;
-            }
-            QCheckBox::indicator:checked {
-                background: #2a5a2a;
-                border: 1px solid #3a6a3a;
-            }
-            QCheckBox::indicator:hover {
-                border: 1px solid #3a3a3a;
-            }
-            QSlider {
-                height: 20px;
-            }
             QSlider::groove:horizontal {
                 height: 4px;
                 background: #1a1a1a;
                 border-radius: 2px;
             }
             QSlider::handle:horizontal {
-                background: #3a3a3a;
+                background: #888888;
                 width: 16px;
                 height: 16px;
                 margin: -6px 0;
                 border-radius: 8px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #4a4a4a;
             }
             QComboBox {
                 background: #1a1a1a;
@@ -165,7 +141,7 @@ class SettingsWidget(QWidget):
                 image: none;
                 border-left: 5px solid transparent;
                 border-right: 5px solid transparent;
-                border-top: 5px solid #666666;
+                border-top: 5px solid #888888;
                 margin-right: 5px;
             }
             QComboBox QAbstractItemView {
@@ -185,13 +161,6 @@ class SettingsWidget(QWidget):
             QLineEdit:focus {
                 border: 1px solid #3a3a3a;
             }
-            QLineEdit#info {
-                background: transparent;
-                border: none;
-                color: #666666;
-                font-size: 12px;
-                padding: 2px;
-            }
         """)
         
         # Main layout
@@ -199,24 +168,21 @@ class SettingsWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
         
-        # Left sidebar - categories
+        # Left sidebar
         sidebar = QWidget()
         sidebar.setFixedWidth(180)
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(2)
         
-        # Title
         title = QLabel("Settings")
         title.setObjectName("title")
         sidebar_layout.addWidget(title)
         
-        # Separator
         sep = QFrame()
         sep.setObjectName("separator")
         sidebar_layout.addWidget(sep)
         
-        # Categories list
         self.category_list = QListWidget()
         self.category_list.setFixedWidth(180)
         categories = [
@@ -236,10 +202,9 @@ class SettingsWidget(QWidget):
         sidebar.setLayout(sidebar_layout)
         layout.addWidget(sidebar)
         
-        # Right content area
+        # Content area
         self.content_stack = QStackedWidget()
         
-        # Create each settings page
         self.general_page = self.create_general_page()
         self.appearance_page = self.create_appearance_page()
         self.system_page = self.create_system_page()
@@ -252,16 +217,14 @@ class SettingsWidget(QWidget):
         
         layout.addWidget(self.content_stack, 1)
         
-        self.setLayout(layout)
-        
-        # Status label at bottom
         self.status_label = QLabel("Ready")
         self.status_label.setStyleSheet("color: #444444; font-size: 11px; padding: 5px 10px;")
         layout.addWidget(self.status_label)
         
+        self.setLayout(layout)
+        
     def load_settings(self):
         """Load settings from manager"""
-        # General
         username = self.settings_manager.get('general.username', 'minios_user')
         self.username_input.setText(username)
         
@@ -270,7 +233,6 @@ class SettingsWidget(QWidget):
         if index >= 0:
             self.lang_combo.setCurrentIndex(index)
         
-        # Appearance
         theme = self.settings_manager.get('appearance.theme', 'dark')
         index = self.theme_combo.findText(theme.capitalize())
         if index >= 0:
@@ -281,18 +243,15 @@ class SettingsWidget(QWidget):
         self.font_size_label.setText(f"{font_size}px")
         
     def switch_category(self, item):
-        """Switch to the selected category page"""
         index = self.category_list.row(item)
         self.content_stack.setCurrentIndex(index)
         
     def create_general_page(self):
-        """Create the General settings page"""
         page = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
         
-        # Username
         name_label = QLabel("Username")
         name_label.setObjectName("section_title")
         layout.addWidget(name_label)
@@ -301,7 +260,6 @@ class SettingsWidget(QWidget):
         self.username_input.setMaximumWidth(250)
         layout.addWidget(self.username_input)
         
-        # Language
         lang_label = QLabel("Language")
         lang_label.setObjectName("section_title")
         layout.addWidget(lang_label)
@@ -311,12 +269,10 @@ class SettingsWidget(QWidget):
         self.lang_combo.setMaximumWidth(200)
         layout.addWidget(self.lang_combo)
         
-        # Separator
         sep = QFrame()
         sep.setObjectName("separator")
         layout.addWidget(sep)
         
-        # Apply button
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         apply_btn = QPushButton("Apply Changes")
@@ -330,13 +286,11 @@ class SettingsWidget(QWidget):
         return page
     
     def create_appearance_page(self):
-        """Create the Appearance settings page"""
         page = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
         
-        # Theme
         theme_label = QLabel("Theme")
         theme_label.setObjectName("section_title")
         layout.addWidget(theme_label)
@@ -346,7 +300,6 @@ class SettingsWidget(QWidget):
         self.theme_combo.setMaximumWidth(200)
         layout.addWidget(self.theme_combo)
         
-        # Font Size
         font_label = QLabel("Font Size")
         font_label.setObjectName("section_title")
         layout.addWidget(font_label)
@@ -367,12 +320,10 @@ class SettingsWidget(QWidget):
         )
         layout.addLayout(font_layout)
         
-        # Separator
         sep = QFrame()
         sep.setObjectName("separator")
         layout.addWidget(sep)
         
-        # Apply button
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         apply_btn = QPushButton("Apply Changes")
@@ -386,13 +337,11 @@ class SettingsWidget(QWidget):
         return page
     
     def create_system_page(self):
-        """Create the System settings page"""
         page = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
         
-        # System info
         info_label = QLabel("System Information")
         info_label.setObjectName("section_title")
         layout.addWidget(info_label)
@@ -402,13 +351,14 @@ class SettingsWidget(QWidget):
         info_layout = QVBoxLayout()
         info_layout.setSpacing(10)
         
+        username = self.settings_manager.get('general.username', 'minios_user')
         info_items = [
             ("OS:", "MiniOS 1.0"),
             ("Kernel:", "minios-kernel 3.7.1"),
             ("Architecture:", "x86_64"),
             ("Python:", "3.13+"),
             ("UI Framework:", "PySide6"),
-            ("User:", self.settings_manager.get('general.username', 'minios_user'))
+            ("User:", username)
         ]
         
         for label, value in info_items:
@@ -426,7 +376,6 @@ class SettingsWidget(QWidget):
         info_frame.setLayout(info_layout)
         layout.addWidget(info_frame)
         
-        # System actions
         actions_label = QLabel("System Actions")
         actions_label.setObjectName("section_title")
         layout.addWidget(actions_label)
@@ -456,19 +405,16 @@ class SettingsWidget(QWidget):
         return page
     
     def create_about_page(self):
-        """Create the About page"""
         page = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
         
-        # Title
         title = QLabel("About MiniOS")
         title.setObjectName("section_title")
         title.setStyleSheet("font-size: 24px; color: #ffffff;")
         layout.addWidget(title)
         
-        # Logo/Name
         name = QLabel("minios")
         name.setStyleSheet("""
             font-size: 48px;
@@ -479,13 +425,11 @@ class SettingsWidget(QWidget):
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(name)
         
-        # Version
         version = QLabel("Version 1.0")
         version.setStyleSheet("color: #666666; font-size: 16px;")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version)
         
-        # Description
         desc = QLabel(
             "A simulated desktop operating system built with Python and PySide6.\n"
             "Minimal, clean, and fully functional."
@@ -495,12 +439,10 @@ class SettingsWidget(QWidget):
         desc.setWordWrap(True)
         layout.addWidget(desc)
         
-        # Separator
         sep = QFrame()
         sep.setObjectName("separator")
         layout.addWidget(sep)
         
-        # Credits
         credits = QLabel(
             "© 2026 MiniOS Corp.\n"
             "Built with ❤️ by the MiniOS Team"
@@ -514,7 +456,6 @@ class SettingsWidget(QWidget):
         return page
     
     def apply_general_settings(self):
-        """Apply general settings changes"""
         username = self.username_input.text().strip()
         lang = self.lang_combo.currentText()
         
@@ -522,23 +463,20 @@ class SettingsWidget(QWidget):
             QMessageBox.warning(self, "Error", "Username cannot be empty")
             return
         
-        # Save settings
         self.settings_manager.set('general.username', username)
         self.settings_manager.set('general.language', lang)
         
-        self.status_label.setText(f"✓ Settings saved: Username: {username}, Language: {lang}")
+        self.status_label.setText(f"✓ Settings saved")
         self.status_label.setStyleSheet("color: #88ff88; font-size: 11px; padding: 5px 10px;")
         
         QMessageBox.information(
             self, "Settings Applied",
-            f"Settings updated!\n\nUsername: {username}\nLanguage: {lang}"
+            f"Settings updated!\n\nUsername: {username}\nLanguage: {lang}\n\n(Changes will take effect after restart)"
         )
         
-        # Emit signal for parent to update
         self.settingsApplied.emit()
     
     def apply_appearance_settings(self):
-        """Apply appearance settings changes"""
         theme = self.theme_combo.currentText().lower()
         font_size = self.font_slider.value()
         
@@ -546,70 +484,57 @@ class SettingsWidget(QWidget):
         self.settings_manager.set('appearance.theme', theme)
         self.settings_manager.set('appearance.font_size', font_size)
         
-        # Apply to application
-        app = self.window().window()
-        self.settings_manager.apply_theme(app, theme)
-        self.settings_manager.apply_font_size(app, font_size)
+        # Apply to the ENTIRE application
+        app = QApplication.instance()
+        self.settings_manager.apply_theme_to_app(app, theme)
+        self.settings_manager.apply_font_size_to_app(app, font_size)
         
         self.status_label.setText(f"✓ Theme: {theme.capitalize()}, Font Size: {font_size}px")
         self.status_label.setStyleSheet("color: #88ff88; font-size: 11px; padding: 5px 10px;")
         
         QMessageBox.information(
             self, "Settings Applied",
-            f"Theme: {theme.capitalize()}\nFont Size: {font_size}px"
+            f"Theme: {theme.capitalize()}\nFont Size: {font_size}px\n\nChanges applied to entire system!"
         )
         
-        # Emit signal for parent to update
         self.settingsApplied.emit()
     
     def logout_system(self):
-        """Trigger logout"""
         reply = QMessageBox.question(
             self, "Logout",
             "Are you sure you want to logout?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
-            # Find the desktop window and trigger logout
-            parent = self.parent()
-            while parent:
-                if hasattr(parent, 'logout'):
-                    parent.logout()
-                    break
-                parent = parent.parent()
+            if self.desktop:
+                self.desktop.logout()
+            else:
+                QMessageBox.warning(self, "Error", "Desktop not found")
     
     def shutdown_system(self):
-        """Trigger shutdown"""
         reply = QMessageBox.question(
             self, "Shutdown",
             "Are you sure you want to shutdown the system?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
-            parent = self.parent()
-            while parent:
-                if hasattr(parent, 'shutdown'):
-                    parent.shutdown()
-                    break
-                parent = parent.parent()
+            if self.desktop:
+                self.desktop.shutdown()
+            else:
+                QMessageBox.warning(self, "Error", "Desktop not found")
     
     def restart_system(self):
-        """Trigger restart (logout then auto-login)"""
         reply = QMessageBox.question(
             self, "Restart",
             "Are you sure you want to restart the system?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
-            # For now, just logout
-            parent = self.parent()
-            while parent:
-                if hasattr(parent, 'logout'):
-                    parent.logout()
-                    break
-                parent = parent.parent()
+            if self.desktop:
+                self.desktop.logout()
+            else:
+                QMessageBox.warning(self, "Error", "Desktop not found")
     
     def showEvent(self, event):
-        """Reload settings when shown"""
         self.load_settings()
         super().showEvent(event)

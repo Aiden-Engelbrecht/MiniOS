@@ -34,7 +34,6 @@ class DesktopWindow(QMainWindow):
         self.setGeometry(50, 50, 1300, 850)
         
         self.setup_ui()
-        self.apply_settings()
         
     def setup_ui(self):
         # Main container
@@ -63,16 +62,6 @@ class DesktopWindow(QMainWindow):
         # Create start menu
         self.start_menu = StartMenu(self.taskbar)
         self.start_menu.appLaunched.connect(self.launch_application)
-        
-    def apply_settings(self):
-        """Apply system settings"""
-        # Apply theme
-        theme = self.settings_manager.get('appearance.theme', 'dark')
-        self.settings_manager.apply_theme(self, theme)
-        
-        # Apply font size
-        font_size = self.settings_manager.get('appearance.font_size', 13)
-        self.settings_manager.apply_font_size(self, font_size)
         
     def show_start_menu(self):
         """Show the start menu at the correct position"""
@@ -103,8 +92,9 @@ class DesktopWindow(QMainWindow):
             title, width, height, content = app_map[app_id]
             window = self.window_manager.create_window(title, width, height, content)
             
-            # If settings, connect the settingsApplied signal
+            # If settings, pass the desktop reference
             if isinstance(content, SettingsWidget):
+                content.set_desktop(self)
                 content.settingsApplied.connect(self.apply_settings)
             
             print(f"Window created for: {title}")
@@ -112,7 +102,12 @@ class DesktopWindow(QMainWindow):
             # Unknown app
             content = SampleAppContent("Application")
             self.window_manager.create_window("Application", 500, 300, content)
-        
+    
+    def apply_settings(self):
+        """Apply settings to the entire application"""
+        app = QApplication.instance()
+        self.settings_manager.apply_all_settings(app)
+    
     def logout(self):
         """Logout and return to login screen"""
         print(f"logging out user: {self.username}")
@@ -142,15 +137,9 @@ class MiniOSApplication:
         self.app.setApplicationName("minios")
         self.app.setOrganizationName("minios")
         
-        # Load settings
+        # Load and apply settings
         self.settings_manager = SettingsManager()
-        
-        # Apply initial settings
-        theme = self.settings_manager.get('appearance.theme', 'dark')
-        self.settings_manager.apply_theme(self.app, theme)
-        
-        font_size = self.settings_manager.get('appearance.font_size', 13)
-        self.settings_manager.apply_font_size(self.app, font_size)
+        self.settings_manager.apply_all_settings(self.app)
         
         # Create screens
         self.splash = MiniOSSplashScreen()

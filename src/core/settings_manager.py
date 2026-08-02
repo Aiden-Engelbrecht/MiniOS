@@ -6,12 +6,12 @@ Handles loading, saving, and applying system settings
 import json
 import os
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QFont
 
 
 class SettingsManager(QObject):
     """Central settings management"""
     
-    # Signal emitted when settings change
     settingsChanged = Signal()
     
     def __init__(self):
@@ -32,6 +32,8 @@ class SettingsManager(QObject):
             }
         }
         self.settings = self.load_settings()
+        self.current_theme = self.get('appearance.theme', 'dark')
+        self.current_font_size = self.get('appearance.font_size', 13)
         
     def load_settings(self):
         """Load settings from file or create defaults"""
@@ -39,7 +41,6 @@ class SettingsManager(QObject):
             try:
                 with open(self.config_path, 'r') as f:
                     saved = json.load(f)
-                    # Merge with defaults to ensure all keys exist
                     merged = self.default_settings.copy()
                     for section in merged:
                         if section in saved:
@@ -83,35 +84,117 @@ class SettingsManager(QObject):
         self.save_settings()
         self.settingsChanged.emit()
     
-    def apply_settings_to_app(self, app):
-        """Apply all settings to the application"""
-        # Apply theme
-        theme = self.get('appearance.theme', 'dark')
-        self.apply_theme(app, theme)
-        
-        # Apply font size
-        font_size = self.get('appearance.font_size', 13)
-        self.apply_font_size(app, font_size)
-    
-    def apply_theme(self, app, theme):
-        """Apply theme to the application"""
-        if theme == 'dark':
-            app.setStyleSheet("""
+    def get_theme_stylesheet(self, theme):
+        """Get the stylesheet for a theme"""
+        if theme == "dark":
+            return """
                 QMainWindow, QWidget {
                     background: #000000;
+                    color: #cccccc;
                 }
-            """)
-        elif theme == 'light':
-            app.setStyleSheet("""
+                QLabel {
+                    color: #888888;
+                }
+                QPushButton {
+                    background: #1a1a1a;
+                    border: 1px solid #2a2a2a;
+                    color: #888888;
+                }
+                QPushButton:hover {
+                    background: #2a2a2a;
+                    color: #ffffff;
+                }
+                QLineEdit, QTextEdit {
+                    background: #1a1a1a;
+                    border: 1px solid #2a2a2a;
+                    color: #888888;
+                }
+                QListWidget {
+                    background: #0d0d0d;
+                    color: #888888;
+                }
+                QListWidget::item:selected {
+                    background: #2a2a2a;
+                    color: #ffffff;
+                }
+                QMenu {
+                    background: #0a0a0a;
+                    border: 1px solid #1a1a1a;
+                    color: #cccccc;
+                }
+                QMenu::item:selected {
+                    background: #1a1a1a;
+                    color: #ffffff;
+                }
+                QFrame {
+                    background: transparent;
+                }
+            """
+        else:  # light
+            return """
                 QMainWindow, QWidget {
-                    background: #ffffff;
+                    background: #f0f0f0;
+                    color: #333333;
                 }
-                QLabel { color: #000000; }
-            """)
-        # More themes can be added
+                QLabel {
+                    color: #666666;
+                }
+                QPushButton {
+                    background: #e0e0e0;
+                    border: 1px solid #cccccc;
+                    color: #333333;
+                }
+                QPushButton:hover {
+                    background: #d0d0d0;
+                    color: #000000;
+                }
+                QLineEdit, QTextEdit {
+                    background: #ffffff;
+                    border: 1px solid #cccccc;
+                    color: #333333;
+                }
+                QListWidget {
+                    background: #f0f0f0;
+                    color: #333333;
+                }
+                QListWidget::item:selected {
+                    background: #cccccc;
+                    color: #000000;
+                }
+                QMenu {
+                    background: #f0f0f0;
+                    border: 1px solid #cccccc;
+                    color: #333333;
+                }
+                QMenu::item:selected {
+                    background: #d0d0d0;
+                    color: #000000;
+                }
+                QFrame {
+                    background: transparent;
+                }
+            """
     
-    def apply_font_size(self, app, size):
-        """Apply font size to the application"""
-        from PySide6.QtGui import QFont
+    def apply_theme_to_app(self, app, theme):
+        """Apply theme to the entire application"""
+        self.current_theme = theme
+        stylesheet = self.get_theme_stylesheet(theme)
+        app.setStyleSheet(stylesheet)
+        
+        # Also update all top-level widgets
+        for widget in app.topLevelWidgets():
+            widget.setStyleSheet(stylesheet)
+    
+    def apply_font_size_to_app(self, app, size):
+        """Apply font size to the entire application"""
+        self.current_font_size = size
         font = QFont("Segoe UI", size)
         app.setFont(font)
+    
+    def apply_all_settings(self, app):
+        """Apply all settings to the application"""
+        theme = self.get('appearance.theme', 'dark')
+        font_size = self.get('appearance.font_size', 13)
+        
+        self.apply_theme_to_app(app, theme)
+        self.apply_font_size_to_app(app, font_size)
