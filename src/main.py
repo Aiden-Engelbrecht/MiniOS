@@ -18,6 +18,7 @@ from apps.sample_app import SampleAppContent
 from apps.file_explorer import FileExplorerWidget
 from apps.notepad import NotepadWidget
 from apps.terminal import TerminalWidget
+from apps.settings import SettingsWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -82,7 +83,7 @@ class DesktopWindow(QMainWindow):
             "explorer": ("File Explorer", 800, 600, FileExplorerWidget()),
             "notepad": ("Notepad", 700, 500, NotepadWidget()),
             "terminal": ("Terminal", 800, 500, TerminalWidget()),
-            "settings": ("Settings", 550, 400, SampleAppContent("Settings"))
+            "settings": ("Settings", 700, 550, SettingsWidget())
         }
         
         if app_id in app_map:
