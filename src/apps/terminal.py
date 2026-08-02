@@ -5,11 +5,10 @@ Command-line interface for system interaction
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
-    QTextEdit, QLineEdit, QLabel, QPushButton,
-    QScrollBar, QApplication
+    QTextEdit, QLineEdit, QLabel, QPushButton
 )
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QColor, QTextCursor
+from PySide6.QtGui import QFont, QTextCursor
 
 from system.virtual_filesystem import VirtualFileSystem
 
@@ -26,6 +25,9 @@ class TerminalWidget(QWidget):
         self.setup_ui()
         self.print_welcome()
         
+        # Set focus to input after startup
+        QTimer.singleShot(100, self.focus_input)
+        
     def setup_ui(self):
         self.setStyleSheet("""
             QWidget {
@@ -41,6 +43,9 @@ class TerminalWidget(QWidget):
                 padding: 10px;
                 selection-background-color: #1a3a1a;
             }
+            QTextEdit:focus {
+                border: none;
+            }
             QLineEdit {
                 background: #0a0a0a;
                 border: none;
@@ -51,6 +56,7 @@ class TerminalWidget(QWidget):
             }
             QLineEdit:focus {
                 border: none;
+                outline: none;
             }
             QLabel {
                 color: #00ff41;
@@ -82,7 +88,6 @@ class TerminalWidget(QWidget):
         self.output.setReadOnly(True)
         self.output.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         self.output.setFont(QFont("Consolas", 13))
-        # Green text on black background
         self.output.setStyleSheet("""
             QTextEdit {
                 background: #0a0a0a;
@@ -94,6 +99,8 @@ class TerminalWidget(QWidget):
         layout.addWidget(self.output, 1)
         
         # Input area
+        input_container = QWidget()
+        input_container.setStyleSheet("background: #0a0a0a;")
         input_layout = QHBoxLayout()
         input_layout.setContentsMargins(10, 2, 10, 2)
         input_layout.setSpacing(5)
@@ -101,7 +108,7 @@ class TerminalWidget(QWidget):
         # Prompt label
         self.prompt_label = QLabel("$ ")
         self.prompt_label.setFont(QFont("Consolas", 13))
-        self.prompt_label.setStyleSheet("color: #00ff41;")
+        self.prompt_label.setStyleSheet("color: #00ff41; background: transparent;")
         input_layout.addWidget(self.prompt_label)
         
         # Command input
@@ -113,24 +120,36 @@ class TerminalWidget(QWidget):
                 border: none;
                 color: #00ff41;
                 font-family: 'Consolas', 'Courier New', monospace;
+                padding: 4px 0px;
+            }
+            QLineEdit:focus {
+                border: none;
+                outline: none;
             }
         """)
         self.input.returnPressed.connect(self.execute_command)
-        self.input.setFocus()
+        self.input.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         input_layout.addWidget(self.input)
         
         # Clear button
         clear_btn = QPushButton("clear")
         clear_btn.setFont(QFont("Consolas", 10))
+        clear_btn.setStyleSheet("color: #00ff41; background: transparent;")
         clear_btn.clicked.connect(self.clear_output)
         input_layout.addWidget(clear_btn)
         
-        layout.addLayout(input_layout)
+        input_container.setLayout(input_layout)
+        layout.addWidget(input_container)
         
         self.setLayout(layout)
         
-        # Update prompt after filesystem changes
+        # Update prompt
         self.update_prompt()
+        
+    def focus_input(self):
+        """Force focus on the input field"""
+        self.input.setFocus()
+        self.input.setCursorPosition(len(self.input.text()))
         
     def print_welcome(self):
         """Print welcome message"""
@@ -158,7 +177,6 @@ class TerminalWidget(QWidget):
         
     def append_output(self, text, color="#00ff41"):
         """Append text to output with color"""
-        # Use HTML for color
         if color:
             html = f'<span style="color: {color};">{text}</span>'
             self.output.append(html)
@@ -172,6 +190,7 @@ class TerminalWidget(QWidget):
     def clear_output(self):
         """Clear the output area"""
         self.output.clear()
+        self.focus_input()
         
     def execute_command(self):
         """Execute the entered command"""
@@ -179,6 +198,7 @@ class TerminalWidget(QWidget):
         self.input.clear()
         
         if not command:
+            self.focus_input()
             return
         
         # Add to history
@@ -200,6 +220,9 @@ class TerminalWidget(QWidget):
             
         # Update prompt
         self.update_prompt()
+        
+        # Keep focus on input
+        self.focus_input()
         
     def process_command(self, cmd, args):
         """Process a command and return output"""
@@ -223,8 +246,6 @@ Available commands:
   date          - Display current date and time
   history       - Show command history
   rm <name>     - Remove a file or folder
-  mv <src> <dst>- Move/rename a file or folder
-  cp <src> <dst>- Copy a file or folder
   tree          - Display directory structure
 """
         
@@ -285,7 +306,8 @@ Available commands:
         
         # Exit/Logout
         elif cmd in ["exit", "logout"]:
-            self.parent().close()
+            if self.parent():
+                self.parent().close()
             return ""
         
         # Whoami
@@ -311,7 +333,7 @@ Available commands:
                 return f"Removed: {args[0]}"
             return f"rm: cannot remove '{args[0]}': No such file or directory"
         
-        # Tree - show directory structure
+        # Tree
         elif cmd == "tree":
             return self.build_tree()
         
@@ -336,7 +358,6 @@ Available commands:
             if isinstance(item, self.fs.Folder):
                 line += "/"
                 output.append(line)
-                # Recurse into folder
                 child_indent = indent + ("    " if is_last else "│   ")
                 output.extend(self.build_tree("", is_last_item, child_indent, item))
             else:
@@ -362,7 +383,19 @@ Available commands:
                 else:
                     self.input.setText(self.command_history[-1 - self.history_index])
                     self.input.selectAll()
+        elif event.key() == Qt.Key.Key_Escape:
+            self.input.clear()
         super().keyPressEvent(event)
+    
+    def mousePressEvent(self, event):
+        """Focus input when clicking anywhere"""
+        self.focus_input()
+        super().mousePressEvent(event)
+    
+    def showEvent(self, event):
+        """Focus input when shown"""
+        super().showEvent(event)
+        QTimer.singleShot(100, self.focus_input)
     
     def closeEvent(self, event):
         """Handle terminal close"""
