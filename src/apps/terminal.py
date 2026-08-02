@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QTextCursor
 
-from system.virtual_filesystem import VirtualFileSystem
+from system.virtual_filesystem import VirtualFileSystem, Folder, File
 
 
 class TerminalWidget(QWidget):
@@ -171,7 +171,7 @@ class TerminalWidget(QWidget):
         if path == "root":
             prompt = "minios@system:/$ "
         else:
-            prompt = f"minios@system:{path}$ "
+            prompt = f"minios@system:/{path}$ "
         self.prompt = prompt
         self.prompt_label.setText("$ ")
         
@@ -253,7 +253,15 @@ Available commands:
         elif cmd == "ls":
             items = self.fs.ls()
             if items:
-                return "  ".join(items)
+                # Format nicely with folders and files
+                formatted = []
+                for name in items:
+                    item = self.fs.current_directory.get_item(name)
+                    if item and isinstance(item, Folder):
+                        formatted.append(f"{name}/")
+                    else:
+                        formatted.append(name)
+                return "  ".join(formatted)
             return "(empty)"
         
         # Change directory
@@ -262,13 +270,24 @@ Available commands:
                 self.fs.cd("/")
                 return ""
             path = args[0]
-            if self.fs.cd(path):
+            if path == "..":
+                if self.fs.cd(".."):
+                    return ""
+                return "cd: already at root"
+            elif path == "/":
+                self.fs.cd("/")
                 return ""
-            return f"cd: {path}: No such directory"
+            else:
+                if self.fs.cd(path):
+                    return ""
+                return f"cd: {path}: No such directory"
         
         # Print working directory
         elif cmd == "pwd":
-            return self.fs.pwd()
+            path = self.fs.pwd()
+            if path == "root":
+                return "/"
+            return f"/{path}"
         
         # Make directory
         elif cmd == "mkdir":
@@ -333,7 +352,7 @@ Available commands:
                 return f"Removed: {args[0]}"
             return f"rm: cannot remove '{args[0]}': No such file or directory"
         
-        # Tree
+        # Tree - fixed version
         elif cmd == "tree":
             return self.build_tree()
         
@@ -341,29 +360,39 @@ Available commands:
         else:
             return f"command not found: {cmd} (type 'help' for available commands)"
     
-    def build_tree(self, indent="", is_last=True, prefix="", folder=None):
-        """Build a tree representation of the filesystem"""
-        if folder is None:
-            folder = self.fs.current_directory
-            output = [f"{folder.name}/"]
-            prefix = "└── "
-        else:
-            output = []
-            prefix = "└── " if is_last else "├── "
+    def build_tree(self):
+        """Build a tree representation of the filesystem from current directory"""
+        def _build_tree(folder, indent="", is_last=True):
+            lines = []
+            items = folder.list_items()
+            
+            # Sort: folders first
+            folders = [i for i in items if isinstance(i, Folder)]
+            files = [i for i in items if isinstance(i, File)]
+            sorted_items = folders + files
+            
+            for i, item in enumerate(sorted_items):
+                is_last_item = (i == len(sorted_items) - 1)
+                
+                # Choose the prefix
+                prefix = "└── " if is_last_item else "├── "
+                line = indent + prefix + item.name
+                
+                if isinstance(item, Folder):
+                    line += "/"
+                    lines.append(line)
+                    # Recurse into folder
+                    child_indent = indent + ("    " if is_last_item else "│   ")
+                    lines.extend(_build_tree(item, child_indent, is_last_item))
+                else:
+                    lines.append(line)
+            
+            return lines
         
-        items = folder.list_items()
-        for i, item in enumerate(items):
-            is_last_item = (i == len(items) - 1)
-            line = indent + prefix + item.name
-            if isinstance(item, self.fs.Folder):
-                line += "/"
-                output.append(line)
-                child_indent = indent + ("    " if is_last else "│   ")
-                output.extend(self.build_tree("", is_last_item, child_indent, item))
-            else:
-                output.append(line)
-        
-        return "\n".join(output) if isinstance(output, list) else output
+        # Start from current directory
+        lines = [f"{self.fs.current_directory.name}/"]
+        lines.extend(_build_tree(self.fs.current_directory))
+        return "\n".join(lines)
     
     def keyPressEvent(self, event):
         """Handle key events for command history"""
