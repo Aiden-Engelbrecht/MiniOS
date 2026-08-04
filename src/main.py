@@ -21,6 +21,7 @@ from apps.notepad import NotepadWidget
 from apps.terminal import TerminalWidget
 from apps.settings import SettingsWidget
 from apps.calendar import CalendarWidget
+from apps.image_viewer import ImageViewerWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -86,7 +87,8 @@ class DesktopWindow(QMainWindow):
             "notepad": ("Notepad", 700, 500, NotepadWidget()),
             "terminal": ("Terminal", 800, 500, TerminalWidget()),
             "settings": ("Settings", 700, 550, SettingsWidget()),
-            "calendar": ("Calendar", 500, 450, CalendarWidget())
+            "calendar": ("Calendar", 500, 450, CalendarWidget()),
+            "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget())
         }
         
         if app_id in app_map:

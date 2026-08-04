@@ -177,7 +177,8 @@ class DesktopIcon(QWidget):
             "terminal": "#66d9ef", 
             "settings": "#a6a6a6",
             "notepad": "#f8f8f2",
-            "calendar": "#ff6b6b"
+            "calendar": "#ff6b6b",
+            "imageviewer": "#ffa94d"
         }
         icon_color = colors.get(name, "#666666")
         self.icon_label.setStyleSheet(f"""
@@ -243,6 +244,7 @@ class DesktopWidget(QWidget):
             ("terminal", "⌘"), 
             ("notepad", "✎"),
             ("calendar", "📅"),
+            ("imageviewer", "🖼"),
             ("settings", "⚙")
         ]
         
