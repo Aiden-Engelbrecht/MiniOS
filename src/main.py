@@ -22,6 +22,7 @@ from apps.terminal import TerminalWidget
 from apps.settings import SettingsWidget
 from apps.calendar import CalendarWidget
 from apps.image_viewer import ImageViewerWidget
+from apps.recycle_bin import RecycleBinWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -88,7 +89,8 @@ class DesktopWindow(QMainWindow):
             "terminal": ("Terminal", 800, 500, TerminalWidget()),
             "settings": ("Settings", 700, 550, SettingsWidget()),
             "calendar": ("Calendar", 500, 450, CalendarWidget()),
-            "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget())
+            "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget()),
+            "recyclebin": ("Recycle Bin", 700, 500, RecycleBinWidget())
         }
         
         if app_id in app_map:
