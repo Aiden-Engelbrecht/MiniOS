@@ -23,6 +23,7 @@ from apps.settings import SettingsWidget
 from apps.calendar import CalendarWidget
 from apps.image_viewer import ImageViewerWidget
 from apps.recycle_bin import RecycleBinWidget
+from apps.music_player import MusicPlayerWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -90,7 +91,8 @@ class DesktopWindow(QMainWindow):
             "settings": ("Settings", 700, 550, SettingsWidget()),
             "calendar": ("Calendar", 500, 450, CalendarWidget()),
             "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget()),
-            "recyclebin": ("Recycle Bin", 700, 500, RecycleBinWidget())
+            "recyclebin": ("Recycle Bin", 700, 500, RecycleBinWidget()),
+            "musicplayer": ("Music Player", 600, 450, MusicPlayerWidget())
         }
         
         if app_id in app_map:
