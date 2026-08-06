@@ -6,11 +6,11 @@ Simple audio player with play/pause, volume, and progress
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFileDialog, QMessageBox,
-    QSlider, QFrame, QProgressBar
+    QSlider, QFrame
 )
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QFont
-from PySide6.QtMultimedia import QMediaPlayer
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 
 import os
@@ -23,17 +23,21 @@ class MusicPlayerWidget(QWidget):
         super().__init__()
         self.current_file = None
         self.is_playing = False
-        self.is_paused = False
+        
+        # Setup audio output
+        self.audio_output = QAudioOutput()
+        self.audio_output.setVolume(0.7)  # 70% volume
         
         # Setup media player
         self.player = QMediaPlayer()
+        self.player.setAudioOutput(self.audio_output)
         self.player.positionChanged.connect(self.update_position)
         self.player.durationChanged.connect(self.update_duration)
         self.player.mediaStatusChanged.connect(self.handle_media_status)
         self.player.errorOccurred.connect(self.handle_error)
+        self.player.playbackStateChanged.connect(self.handle_playback_state)
         
         self.setup_ui()
-        self.setup_timer()
         
     def setup_ui(self):
         self.setStyleSheet("""
@@ -109,16 +113,6 @@ class MusicPlayerWidget(QWidget):
                 background: #1a1a1a;
                 max-height: 1px;
                 min-height: 1px;
-            }
-            QProgressBar {
-                border: none;
-                background: #1a1a1a;
-                height: 4px;
-                border-radius: 2px;
-            }
-            QProgressBar::chunk {
-                background: #2a5a2a;
-                border-radius: 2px;
             }
         """)
         
@@ -233,15 +227,6 @@ class MusicPlayerWidget(QWidget):
         
         self.setLayout(layout)
         
-        # Set initial volume
-        self.player.setVolume(70)
-        
-    def setup_timer(self):
-        """Setup timer for updating UI"""
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.update_ui)
-        self.update_timer.start(500)
-        
     def open_file(self):
         """Open an audio file"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -276,37 +261,22 @@ class MusicPlayerWidget(QWidget):
     
     def toggle_play(self):
         """Toggle play/pause"""
-        if self.player.mediaStatus() == QMediaPlayer.MediaStatus.LoadedMedia:
-            # Ready to play
-            self.player.play()
-            self.is_playing = True
-            self.play_btn.setText("⏸")
-            self.now_playing_label.setText(f"Playing: {os.path.basename(self.current_file)}")
-        elif self.player.mediaStatus() == QMediaPlayer.MediaStatus.LoadingMedia:
-            # Still loading
-            pass
-        elif self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+        if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             # Currently playing - pause
             self.player.pause()
             self.is_playing = False
             self.play_btn.setText("▶")
-            self.now_playing_label.setText(f"Paused: {os.path.basename(self.current_file)}")
-        elif self.player.playbackState() == QMediaPlayer.PlaybackState.PausedState:
-            # Currently paused - resume
+            self.now_playing_label.setText(f"Paused: {os.path.basename(self.current_file)}" if self.current_file else "No music loaded")
+        else:
+            # Currently paused or stopped - play
             self.player.play()
             self.is_playing = True
             self.play_btn.setText("⏸")
-            self.now_playing_label.setText(f"Playing: {os.path.basename(self.current_file)}")
-        elif self.player.playbackState() == QMediaPlayer.PlaybackState.StoppedState:
-            # Stopped - play
-            self.player.play()
-            self.is_playing = True
-            self.play_btn.setText("⏸")
-            self.now_playing_label.setText(f"Playing: {os.path.basename(self.current_file)}")
+            self.now_playing_label.setText(f"Playing: {os.path.basename(self.current_file)}" if self.current_file else "No music loaded")
     
     def set_volume(self, value):
         """Set volume level"""
-        self.player.setVolume(value)
+        self.audio_output.setVolume(value / 100.0)
         self.volume_label.setText(f"{value}%")
     
     def seek_position(self, value):
@@ -336,19 +306,18 @@ class MusicPlayerWidget(QWidget):
         seconds = seconds % 60
         return f"{minutes}:{seconds:02d}"
     
-    def update_ui(self):
-        """Update UI state"""
-        # Update play button state if media ended
-        if self.player.playbackState() == QMediaPlayer.PlaybackState.StoppedState:
-            if self.is_playing:
-                self.is_playing = False
-                self.play_btn.setText("▶")
-                self.now_playing_label.setText(f"Finished: {os.path.basename(self.current_file)}" if self.current_file else "No music loaded")
+    def handle_playback_state(self, state):
+        """Handle playback state changes"""
+        if state == QMediaPlayer.PlaybackState.StoppedState:
+            self.is_playing = False
+            self.play_btn.setText("▶")
+            if self.current_file:
+                self.now_playing_label.setText(f"Stopped: {os.path.basename(self.current_file)}")
     
     def handle_media_status(self, status):
         """Handle media status changes"""
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
-            self.now_playing_label.setText(f"Ready: {os.path.basename(self.current_file)}")
+            self.now_playing_label.setText(f"Ready: {os.path.basename(self.current_file)}" if self.current_file else "No music loaded")
             self.play_btn.setEnabled(True)
         elif status == QMediaPlayer.MediaStatus.EndOfMedia:
             self.is_playing = False
@@ -376,7 +345,6 @@ class MusicPlayerWidget(QWidget):
     
     def prev_track(self):
         """Go to previous track (placeholder)"""
-        # For now, just restart current track
         if self.current_file:
             self.player.setPosition(0)
             if self.is_playing:
@@ -384,7 +352,6 @@ class MusicPlayerWidget(QWidget):
     
     def next_track(self):
         """Go to next track (placeholder)"""
-        # For now, just stop and restart current track
         if self.current_file:
             self.player.setPosition(0)
             self.player.play()
