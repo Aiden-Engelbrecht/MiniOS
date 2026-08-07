@@ -76,6 +76,7 @@ class StartMenu(QMenu):
             ("◈  Calendar", "calendar"),
             ("◈  Image Viewer", "imageviewer"),
             ("◈  Music Player", "musicplayer"),
+            ("◈  System Monitor", "systemmonitor"),
             ("◈  Recycle Bin", "recyclebin"),
             ("◈  Settings", "settings")
         ]
