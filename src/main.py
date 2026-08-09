@@ -25,6 +25,7 @@ from apps.image_viewer import ImageViewerWidget
 from apps.recycle_bin import RecycleBinWidget
 from apps.music_player import MusicPlayerWidget
 from apps.system_monitor import SystemMonitorWidget
+from apps.calculator import CalculatorWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -94,7 +95,8 @@ class DesktopWindow(QMainWindow):
             "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget()),
             "recyclebin": ("Recycle Bin", 700, 500, RecycleBinWidget()),
             "musicplayer": ("Music Player", 600, 450, MusicPlayerWidget()),
-            "systemmonitor": ("System Monitor", 600, 500, SystemMonitorWidget())
+            "systemmonitor": ("System Monitor", 600, 500, SystemMonitorWidget()),
+            "calculator": ("Calculator", 350, 550, CalculatorWidget())
         }
         
         if app_id in app_map:

@@ -73,6 +73,7 @@ class StartMenu(QMenu):
             ("◈  Explorer", "explorer"),
             ("◈  Notepad", "notepad"),
             ("◈  Terminal", "terminal"),
+            ("◈  Calculator", "calculator"),
             ("◈  Calendar", "calendar"),
             ("◈  Image Viewer", "imageviewer"),
             ("◈  Music Player", "musicplayer"),
