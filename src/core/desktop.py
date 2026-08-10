@@ -182,7 +182,8 @@ class DesktopIcon(QWidget):
             "imageviewer": "#ffa94d",
             "recyclebin": "#ff6b6b",
             "musicplayer": "#ff6bff",
-            "systemmonitor": "#66d9ef"
+            "systemmonitor": "#66d9ef",
+            "weather": "#4a9eff"
         }
         icon_color = colors.get(name, "#666666")
         self.icon_label.setStyleSheet(f"""
@@ -253,6 +254,7 @@ class DesktopWidget(QWidget):
             ("musicplayer", "🎵"),
             ("systemmonitor", "📊"),
             ("recyclebin", "🗑"),
+            ("weather", "🌤"),
             ("settings", "⚙")
         ]
         

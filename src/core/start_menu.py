@@ -79,6 +79,7 @@ class StartMenu(QMenu):
             ("◈  Music Player", "musicplayer"),
             ("◈  System Monitor", "systemmonitor"),
             ("◈  Recycle Bin", "recyclebin"),
+            ("◈  Weather Widget", "weather"),
             ("◈  Settings", "settings")
         ]
         

@@ -26,6 +26,7 @@ from apps.recycle_bin import RecycleBinWidget
 from apps.music_player import MusicPlayerWidget
 from apps.system_monitor import SystemMonitorWidget
 from apps.calculator import CalculatorWidget
+from apps.weather_widget import WeatherWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -68,6 +69,9 @@ class DesktopWindow(QMainWindow):
         self.start_menu = StartMenu(self.taskbar)
         self.start_menu.appLaunched.connect(self.launch_application)
         
+        # Create weather widget (floating desktop widget)
+        self.weather_widget = None
+        
     def show_start_menu(self):
         """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
@@ -84,6 +88,20 @@ class DesktopWindow(QMainWindow):
             self.shutdown()
             return
         
+        # Handle weather widget (special case - floating widget)
+        if app_id == "weather":
+            if self.weather_widget is None or not self.weather_widget.isVisible():
+                self.weather_widget = WeatherWidget()
+                # Position it in top-right corner
+                screen = QApplication.primaryScreen().geometry()
+                self.weather_widget.move(screen.width() - 300, 50)
+                self.weather_widget.show()
+                self.weather_widget.raise_()
+            else:
+                self.weather_widget.raise_()
+                self.weather_widget.show()
+            return
+        
         # Map app_id to display names and content
         app_map = {
             "files": ("File Explorer", 800, 600, FileExplorerWidget()),
@@ -91,12 +109,12 @@ class DesktopWindow(QMainWindow):
             "notepad": ("Notepad", 700, 500, NotepadWidget()),
             "terminal": ("Terminal", 800, 500, TerminalWidget()),
             "settings": ("Settings", 700, 550, SettingsWidget()),
+            "calculator": ("Calculator", 350, 550, CalculatorWidget()),
             "calendar": ("Calendar", 500, 450, CalendarWidget()),
             "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget()),
             "recyclebin": ("Recycle Bin", 700, 500, RecycleBinWidget()),
             "musicplayer": ("Music Player", 600, 450, MusicPlayerWidget()),
-            "systemmonitor": ("System Monitor", 600, 500, SystemMonitorWidget()),
-            "calculator": ("Calculator", 350, 550, CalculatorWidget())
+            "systemmonitor": ("System Monitor", 600, 500, SystemMonitorWidget())
         }
         
         if app_id in app_map:
@@ -122,6 +140,8 @@ class DesktopWindow(QMainWindow):
     def logout(self):
         """Logout and return to login screen"""
         print(f"logging out user: {self.username}")
+        if self.weather_widget:
+            self.weather_widget.close()
         self.window_manager.close_all_windows()
         self.close()
         if self.logout_callback:
@@ -130,12 +150,16 @@ class DesktopWindow(QMainWindow):
     def shutdown(self):
         """Shutdown the system"""
         print("system shutting down...")
+        if self.weather_widget:
+            self.weather_widget.close()
         self.window_manager.close_all_windows()
         self.close()
         from PySide6.QtCore import QTimer
         QTimer.singleShot(500, lambda: sys.exit(0))
         
     def closeEvent(self, event):
+        if self.weather_widget:
+            self.weather_widget.close()
         self.window_manager.close_all_windows()
         event.accept()
 
