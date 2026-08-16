@@ -7,7 +7,8 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QKeySequence, QShortcut
 
 from core.splash_screen import MiniOSSplashScreen
 from core.login_screen import LoginScreen
@@ -27,6 +28,7 @@ from apps.music_player import MusicPlayerWidget
 from apps.system_monitor import SystemMonitorWidget
 from apps.calculator import CalculatorWidget
 from apps.weather_widget import WeatherWidget
+from apps.search_bar import SearchBarWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -41,6 +43,7 @@ class DesktopWindow(QMainWindow):
         self.setGeometry(50, 50, 1300, 850)
         
         self.setup_ui()
+        self.setup_search_shortcut()
         
     def setup_ui(self):
         # Main container
@@ -72,6 +75,33 @@ class DesktopWindow(QMainWindow):
         # Create weather widget (floating desktop widget)
         self.weather_widget = None
         
+        # Create search bar
+        self.search_bar = SearchBarWidget()
+        self.search_bar.appLaunched.connect(self.launch_application)
+        
+    def setup_search_shortcut(self):
+        """Setup keyboard shortcut for search"""
+        # Ctrl+Space to open search
+        shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
+        shortcut.activated.connect(self.show_search)
+        
+        # Alt+Space as alternative
+        shortcut2 = QShortcut(QKeySequence("Alt+Space"), self)
+        shortcut2.activated.connect(self.show_search)
+        
+        # Ctrl+Shift+F as another alternative
+        shortcut3 = QShortcut(QKeySequence("Ctrl+Shift+F"), self)
+        shortcut3.activated.connect(self.show_search)
+        
+    def show_search(self):
+        """Show the search bar"""
+        # Position it in the center of the screen
+        screen = QApplication.primaryScreen().geometry()
+        x = (screen.width() - 500) // 2
+        y = (screen.height() - 60) // 3  # 1/3 from top
+        self.search_bar.move(x, y)
+        self.search_bar.show_search()
+    
     def show_start_menu(self):
         """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
@@ -142,6 +172,8 @@ class DesktopWindow(QMainWindow):
         print(f"logging out user: {self.username}")
         if self.weather_widget:
             self.weather_widget.close()
+        if self.search_bar:
+            self.search_bar.close()
         self.window_manager.close_all_windows()
         self.close()
         if self.logout_callback:
@@ -152,6 +184,8 @@ class DesktopWindow(QMainWindow):
         print("system shutting down...")
         if self.weather_widget:
             self.weather_widget.close()
+        if self.search_bar:
+            self.search_bar.close()
         self.window_manager.close_all_windows()
         self.close()
         from PySide6.QtCore import QTimer
@@ -160,6 +194,8 @@ class DesktopWindow(QMainWindow):
     def closeEvent(self, event):
         if self.weather_widget:
             self.weather_widget.close()
+        if self.search_bar:
+            self.search_bar.close()
         self.window_manager.close_all_windows()
         event.accept()
 

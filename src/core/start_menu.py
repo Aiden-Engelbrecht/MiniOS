@@ -68,6 +68,13 @@ class StartMenu(QMenu):
         
         self.addSeparator()
         
+        # Search entry
+        search_action = QAction("🔍  Search... (Ctrl+Space)", self)
+        search_action.triggered.connect(lambda: self.appLaunched.emit("search"))
+        self.addAction(search_action)
+        
+        self.addSeparator()
+        
         # Applications
         apps = [
             ("◈  Explorer", "explorer"),
