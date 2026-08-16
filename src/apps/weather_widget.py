@@ -5,12 +5,11 @@ Desktop widget showing simulated weather conditions
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QComboBox, QTimer
+    QPushButton, QFrame, QComboBox
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QPixmap, QPainter, QColor, QBrush
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
 import random
-import math
 
 
 class WeatherWidget(QWidget):
