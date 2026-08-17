@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout
 )
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QKeySequence, QShortcut
 
 from core.splash_screen import MiniOSSplashScreen
 from core.login_screen import LoginScreen
@@ -16,6 +15,7 @@ from core.desktop import DesktopWidget, Taskbar
 from core.start_menu import StartMenu
 from core.window_manager import WindowManager
 from core.settings_manager import SettingsManager
+from core.notification_manager import NotificationManager
 from apps.sample_app import SampleAppContent
 from apps.file_explorer import FileExplorerWidget
 from apps.notepad import NotepadWidget
@@ -29,6 +29,8 @@ from apps.system_monitor import SystemMonitorWidget
 from apps.calculator import CalculatorWidget
 from apps.weather_widget import WeatherWidget
 from apps.search_bar import SearchBarWidget
+from apps.notification_center import NotificationCenterWidget
+from apps.toast_notification import ToastNotification
 
 
 class DesktopWindow(QMainWindow):
@@ -39,11 +41,13 @@ class DesktopWindow(QMainWindow):
         self.username = username
         self.logout_callback = logout_callback
         self.settings_manager = SettingsManager()
+        self.notification_manager = NotificationManager()
         self.setWindowTitle("minios")
         self.setGeometry(50, 50, 1300, 850)
         
         self.setup_ui()
         self.setup_search_shortcut()
+        self.setup_notification_timer()
         
     def setup_ui(self):
         # Main container
@@ -81,24 +85,60 @@ class DesktopWindow(QMainWindow):
         
     def setup_search_shortcut(self):
         """Setup keyboard shortcut for search"""
-        # Ctrl+Space to open search
+        from PySide6.QtGui import QKeySequence, QShortcut
         shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
         shortcut.activated.connect(self.show_search)
         
-        # Alt+Space as alternative
         shortcut2 = QShortcut(QKeySequence("Alt+Space"), self)
         shortcut2.activated.connect(self.show_search)
+    
+    def setup_notification_timer(self):
+        """Setup demo notification timer"""
+        self.notification_timer = QTimer()
+        self.notification_timer.timeout.connect(self.show_demo_notification)
+        self.notification_timer.start(15000)  # Every 15 seconds
         
-        # Ctrl+Shift+F as another alternative
-        shortcut3 = QShortcut(QKeySequence("Ctrl+Shift+F"), self)
-        shortcut3.activated.connect(self.show_search)
+        # Show welcome notification
+        QTimer.singleShot(2000, self.show_welcome_notification)
+    
+    def show_welcome_notification(self):
+        """Show welcome notification"""
+        self.show_toast(
+            "Welcome to MiniOS!",
+            f"Hello {self.username}! Your system is ready.",
+            "👋",
+            "success",
+            5000
+        )
+    
+    def show_demo_notification(self):
+        """Show a demo notification"""
+        import random
+        messages = [
+            ("System Update", "Your system is up to date.", "📦", "info"),
+            ("New App Available", "Calculator has been updated.", "📱", "info"),
+            ("Weather Alert", "Rain expected later today.", "🌧", "warning"),
+            ("Backup Complete", "Your files have been backed up.", "✅", "success"),
+            ("Security Scan", "No threats detected.", "🔒", "success"),
+            ("Disk Space", "You have 5.2 GB free space.", "💾", "warning"),
+            ("Network Connected", "Connected to Wi-Fi.", "🌐", "info"),
+        ]
+        title, message, icon, notif_type = random.choice(messages)
+        self.show_toast(title, message, icon, notif_type, 4000)
+    
+    def show_toast(self, title, message, icon="📢", notif_type="info", duration=4000):
+        """Show a toast notification"""
+        toast = ToastNotification(title, message, icon, notif_type, duration)
+        toast.show()
         
+        # Also add to notification manager
+        self.notification_manager.add_notification(title, message, icon, notif_type, duration)
+    
     def show_search(self):
         """Show the search bar"""
-        # Position it in the center of the screen
         screen = QApplication.primaryScreen().geometry()
         x = (screen.width() - 500) // 2
-        y = (screen.height() - 60) // 3  # 1/3 from top
+        y = (screen.height() - 60) // 3
         self.search_bar.move(x, y)
         self.search_bar.show_search()
     
@@ -122,7 +162,6 @@ class DesktopWindow(QMainWindow):
         if app_id == "weather":
             if self.weather_widget is None or not self.weather_widget.isVisible():
                 self.weather_widget = WeatherWidget()
-                # Position it in top-right corner
                 screen = QApplication.primaryScreen().geometry()
                 self.weather_widget.move(screen.width() - 300, 50)
                 self.weather_widget.show()
@@ -130,6 +169,12 @@ class DesktopWindow(QMainWindow):
             else:
                 self.weather_widget.raise_()
                 self.weather_widget.show()
+            return
+        
+        # Handle notification center
+        if app_id == "notifications":
+            content = NotificationCenterWidget()
+            self.window_manager.create_window("Notification Center", 500, 500, content)
             return
         
         # Map app_id to display names and content
@@ -151,14 +196,12 @@ class DesktopWindow(QMainWindow):
             title, width, height, content = app_map[app_id]
             window = self.window_manager.create_window(title, width, height, content)
             
-            # If settings, pass the desktop reference
             if isinstance(content, SettingsWidget):
                 content.set_desktop(self)
                 content.settingsApplied.connect(self.apply_settings)
             
             print(f"Window created for: {title}")
         else:
-            # Unknown app
             content = SampleAppContent("Application")
             self.window_manager.create_window("Application", 500, 300, content)
     
@@ -174,6 +217,8 @@ class DesktopWindow(QMainWindow):
             self.weather_widget.close()
         if self.search_bar:
             self.search_bar.close()
+        if hasattr(self, 'notification_timer'):
+            self.notification_timer.stop()
         self.window_manager.close_all_windows()
         self.close()
         if self.logout_callback:
@@ -186,6 +231,8 @@ class DesktopWindow(QMainWindow):
             self.weather_widget.close()
         if self.search_bar:
             self.search_bar.close()
+        if hasattr(self, 'notification_timer'):
+            self.notification_timer.stop()
         self.window_manager.close_all_windows()
         self.close()
         from PySide6.QtCore import QTimer
@@ -196,6 +243,8 @@ class DesktopWindow(QMainWindow):
             self.weather_widget.close()
         if self.search_bar:
             self.search_bar.close()
+        if hasattr(self, 'notification_timer'):
+            self.notification_timer.stop()
         self.window_manager.close_all_windows()
         event.accept()
 
@@ -208,44 +257,35 @@ class MiniOSApplication:
         self.app.setApplicationName("minios")
         self.app.setOrganizationName("minios")
         
-        # Load and apply settings
         self.settings_manager = SettingsManager()
         self.settings_manager.apply_all_settings(self.app)
         
-        # Create screens
         self.splash = MiniOSSplashScreen()
         self.login_screen = LoginScreen()
         self.desktop_window = None
         
-        # Connect signals
         self.splash.loadingComplete.connect(self.show_login)
         self.login_screen.loginSuccessful.connect(self.on_login_success)
         
     def run(self):
-        """Start the application"""
         print("minios starting...")
         self.splash.show()
         sys.exit(self.app.exec())
     
     def show_login(self):
-        """Switch from splash to login"""
         print("showing login screen...")
         self.splash.close()
         self.login_screen.show()
         self.login_screen.clear_fields()
     
     def on_login_success(self, username):
-        """Handle successful login"""
         print(f"login successful: {username}")
         self.login_screen.close()
-        
-        # Create desktop with logout callback
         self.desktop_window = DesktopWindow(username, self.show_login)
         self.desktop_window.show()
         print("desktop ready")
     
     def initialize_system(self):
-        """Initialize system components"""
         pass
 
 
