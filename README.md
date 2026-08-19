@@ -10,7 +10,7 @@ A simulated desktop operating system built with Python and PySide6.
 - Window manager with draggable/resizable windows
 - Virtual file system
 - Built-in applications (File Explorer, Notepad, Calculator, Terminal, etc.)
-- Themes and customization
+- Themes and customizations
 - Notification system
 
 ## Installation
