@@ -85,6 +85,7 @@ class StartMenu(QMenu):
             ("◈  Image Viewer", "imageviewer"),
             ("◈  Music Player", "musicplayer"),
             ("◈  System Monitor", "systemmonitor"),
+            ("◈  Task Manager", "taskmanager"),
             ("◈  Recycle Bin", "recyclebin"),
             ("◈  Notification Center", "notifications"),
             ("◈  Weather Widget", "weather"),

@@ -183,6 +183,7 @@ class DesktopIcon(QWidget):
             "recyclebin": "#ff6b6b",
             "musicplayer": "#ff6bff",
             "systemmonitor": "#66d9ef",
+            "taskmanager": "#ff6b6b",
             "weather": "#4a9eff",
             "search": "#f8f8f2",
             "notifications": "#ffd93d"
@@ -255,6 +256,7 @@ class DesktopWidget(QWidget):
             ("imageviewer", "🖼"),
             ("musicplayer", "🎵"),
             ("systemmonitor", "📊"),
+            ("taskmanager", "📋"),
             ("recyclebin", "🗑"),
             ("notifications", "🔔"),
             ("weather", "🌤"),
