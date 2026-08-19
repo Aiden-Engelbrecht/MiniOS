@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame
 )
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint
 from PySide6.QtGui import QFont
 
 

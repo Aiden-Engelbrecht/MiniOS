@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout
 )
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QKeySequence, QShortcut
 
 from core.splash_screen import MiniOSSplashScreen
 from core.login_screen import LoginScreen
@@ -31,6 +32,7 @@ from apps.weather_widget import WeatherWidget
 from apps.search_bar import SearchBarWidget
 from apps.notification_center import NotificationCenterWidget
 from apps.toast_notification import ToastNotification
+from apps.task_manager import TaskManagerWidget
 
 
 class DesktopWindow(QMainWindow):
@@ -85,7 +87,6 @@ class DesktopWindow(QMainWindow):
         
     def setup_search_shortcut(self):
         """Setup keyboard shortcut for search"""
-        from PySide6.QtGui import QKeySequence, QShortcut
         shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
         shortcut.activated.connect(self.show_search)
         
@@ -96,13 +97,11 @@ class DesktopWindow(QMainWindow):
         """Setup demo notification timer"""
         self.notification_timer = QTimer()
         self.notification_timer.timeout.connect(self.show_demo_notification)
-        self.notification_timer.start(15000)  # Every 15 seconds
+        self.notification_timer.start(15000)
         
-        # Show welcome notification
         QTimer.singleShot(2000, self.show_welcome_notification)
     
     def show_welcome_notification(self):
-        """Show welcome notification"""
         self.show_toast(
             "Welcome to MiniOS!",
             f"Hello {self.username}! Your system is ready.",
@@ -112,7 +111,6 @@ class DesktopWindow(QMainWindow):
         )
     
     def show_demo_notification(self):
-        """Show a demo notification"""
         import random
         messages = [
             ("System Update", "Your system is up to date.", "📦", "info"),
@@ -127,15 +125,11 @@ class DesktopWindow(QMainWindow):
         self.show_toast(title, message, icon, notif_type, 4000)
     
     def show_toast(self, title, message, icon="📢", notif_type="info", duration=4000):
-        """Show a toast notification"""
         toast = ToastNotification(title, message, icon, notif_type, duration)
         toast.show()
-        
-        # Also add to notification manager
         self.notification_manager.add_notification(title, message, icon, notif_type, duration)
     
     def show_search(self):
-        """Show the search bar"""
         screen = QApplication.primaryScreen().geometry()
         x = (screen.width() - 500) // 2
         y = (screen.height() - 60) // 3
@@ -143,14 +137,11 @@ class DesktopWindow(QMainWindow):
         self.search_bar.show_search()
     
     def show_start_menu(self):
-        """Show the start menu at the correct position"""
         self.taskbar.show_start_menu(self.start_menu)
         
     def launch_application(self, app_id):
-        """Launch an application from desktop icon or start menu"""
         print(f"Launching application: {app_id}")
         
-        # Handle system actions
         if app_id == "logout":
             self.logout()
             return
@@ -158,7 +149,6 @@ class DesktopWindow(QMainWindow):
             self.shutdown()
             return
         
-        # Handle weather widget (special case - floating widget)
         if app_id == "weather":
             if self.weather_widget is None or not self.weather_widget.isVisible():
                 self.weather_widget = WeatherWidget()
@@ -171,13 +161,11 @@ class DesktopWindow(QMainWindow):
                 self.weather_widget.show()
             return
         
-        # Handle notification center
         if app_id == "notifications":
             content = NotificationCenterWidget()
             self.window_manager.create_window("Notification Center", 500, 500, content)
             return
         
-        # Map app_id to display names and content
         app_map = {
             "files": ("File Explorer", 800, 600, FileExplorerWidget()),
             "explorer": ("File Explorer", 800, 600, FileExplorerWidget()),
@@ -189,29 +177,26 @@ class DesktopWindow(QMainWindow):
             "imageviewer": ("Image Viewer", 800, 600, ImageViewerWidget()),
             "recyclebin": ("Recycle Bin", 700, 500, RecycleBinWidget()),
             "musicplayer": ("Music Player", 600, 450, MusicPlayerWidget()),
-            "systemmonitor": ("System Monitor", 600, 500, SystemMonitorWidget())
+            "systemmonitor": ("System Monitor", 600, 500, SystemMonitorWidget()),
+            "taskmanager": ("Task Manager", 800, 500, TaskManagerWidget())
         }
         
         if app_id in app_map:
             title, width, height, content = app_map[app_id]
             window = self.window_manager.create_window(title, width, height, content)
-            
             if isinstance(content, SettingsWidget):
                 content.set_desktop(self)
                 content.settingsApplied.connect(self.apply_settings)
-            
             print(f"Window created for: {title}")
         else:
             content = SampleAppContent("Application")
             self.window_manager.create_window("Application", 500, 300, content)
     
     def apply_settings(self):
-        """Apply settings to the entire application"""
         app = QApplication.instance()
         self.settings_manager.apply_all_settings(app)
     
     def logout(self):
-        """Logout and return to login screen"""
         print(f"logging out user: {self.username}")
         if self.weather_widget:
             self.weather_widget.close()
@@ -225,7 +210,6 @@ class DesktopWindow(QMainWindow):
             self.logout_callback()
     
     def shutdown(self):
-        """Shutdown the system"""
         print("system shutting down...")
         if self.weather_widget:
             self.weather_widget.close()
