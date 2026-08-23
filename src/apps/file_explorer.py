@@ -1,21 +1,22 @@
 """
 File Explorer Application for MiniOS
+With context menu and drag-drop support
 """
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QListWidget, QListWidgetItem,
-    QLineEdit, QSplitter, QFrame, QMessageBox,
-    QMenu, QInputDialog
+    QLineEdit, QFrame, QMessageBox,
+    QMenu, QInputDialog, QFileDialog
 )
-from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QFont, QAction, QIcon
+from PySide6.QtCore import Qt, Signal, QMimeData, QUrl
+from PySide6.QtGui import QFont, QAction, QDrag, QPixmap, QPainter
 
 from system.virtual_filesystem import VirtualFileSystem, Folder, File
 
 
 class FileExplorerWidget(QWidget):
-    """File Explorer application widget"""
+    """File Explorer application widget with context menu and drag-drop"""
     
     def __init__(self):
         super().__init__()
@@ -23,6 +24,9 @@ class FileExplorerWidget(QWidget):
         self.current_path = "/"
         self.setup_ui()
         self.refresh()
+        
+        # Enable drag-drop
+        self.setAcceptDrops(True)
         
     def setup_ui(self):
         self.setStyleSheet("""
@@ -93,20 +97,22 @@ class FileExplorerWidget(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
         
-        # Navigation buttons
         self.back_btn = QPushButton("◀")
         self.back_btn.setFixedSize(35, 35)
         self.back_btn.clicked.connect(self.go_back)
+        self.back_btn.setToolTip("Back (Alt+Left)")
         toolbar.addWidget(self.back_btn)
         
         self.forward_btn = QPushButton("▶")
         self.forward_btn.setFixedSize(35, 35)
         self.forward_btn.clicked.connect(self.go_forward)
+        self.forward_btn.setToolTip("Forward (Alt+Right)")
         toolbar.addWidget(self.forward_btn)
         
         self.up_btn = QPushButton("▲")
         self.up_btn.setFixedSize(35, 35)
         self.up_btn.clicked.connect(self.go_up)
+        self.up_btn.setToolTip("Up (Alt+Up)")
         toolbar.addWidget(self.up_btn)
         
         # Path bar
@@ -130,10 +136,16 @@ class FileExplorerWidget(QWidget):
         
         # File list
         self.file_list = QListWidget()
-        self.file_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        self.file_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.file_list.itemDoubleClicked.connect(self.on_item_double_clicked)
         self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.show_context_menu)
+        
+        # Enable drag from list
+        self.file_list.setDragEnabled(True)
+        self.file_list.setDragDropMode(QListWidget.DragDropMode.DragOnly)
+        self.file_list.setAcceptDrops(True)
+        
         layout.addWidget(self.file_list)
         
         # Status bar
@@ -181,7 +193,7 @@ class FileExplorerWidget(QWidget):
         self.status_label.setText(f"Current directory: {self.fs.pwd()}")
         
         # Update navigation buttons
-        self.back_btn.setEnabled(False)  # Simple: no history yet
+        self.back_btn.setEnabled(False)  # We'll use history
         self.forward_btn.setEnabled(False)
         self.up_btn.setEnabled(self.fs.current_directory.parent is not None)
         
@@ -198,36 +210,29 @@ class FileExplorerWidget(QWidget):
         """Handle double-click on item"""
         data = item.data(Qt.ItemDataRole.UserRole)
         if isinstance(data, Folder):
-            # Navigate into folder
             if self.fs.cd(data.name):
                 self.refresh()
         elif isinstance(data, File):
-            # Show file content
             content = data.read()
             QMessageBox.information(self, f"File: {data.name}", content)
     
     def go_back(self):
-        """Go to previous directory"""
-        # Simple: just go to parent
-        self.go_up()
+        if self.fs.go_back():
+            self.refresh()
     
     def go_forward(self):
-        """Go forward"""
-        # Not implemented for simplicity
-        pass
+        if self.fs.go_forward():
+            self.refresh()
     
     def go_up(self):
-        """Go up one directory"""
         if self.fs.cd(".."):
             self.refresh()
     
     def navigate_to_path(self):
-        """Navigate to the path in the path bar"""
         path = self.path_bar.text().strip()
         if path:
-            # Simple: try to go to path
+            # Try to navigate to path
             parts = path.split('/')
-            # Start from root
             self.fs.current_directory = self.fs.root
             success = True
             for part in parts:
@@ -238,12 +243,10 @@ class FileExplorerWidget(QWidget):
             if success:
                 self.refresh()
             else:
-                # Revert to current directory
                 self.refresh()
                 QMessageBox.warning(self, "Error", f"Cannot navigate to: {path}")
     
     def create_new_folder(self):
-        """Create a new folder"""
         name, ok = QInputDialog.getText(self, "New Folder", "Enter folder name:")
         if ok and name:
             if self.fs.mkdir(name):
@@ -256,43 +259,154 @@ class FileExplorerWidget(QWidget):
         """Show context menu for file list"""
         menu = QMenu(self)
         
-        # Get selected item
-        item = self.file_list.itemAt(position)
-        if item:
+        # Get selected items
+        selected_items = self.file_list.selectedItems()
+        has_selection = len(selected_items) > 0
+        
+        if has_selection:
+            # Action for first selected item
+            item = selected_items[0]
             data = item.data(Qt.ItemDataRole.UserRole)
             
-            if isinstance(data, Folder):
-                open_action = QAction("Open", self)
-                open_action.triggered.connect(lambda: self.on_item_double_clicked(item))
-                menu.addAction(open_action)
+            if data:
+                if isinstance(data, Folder):
+                    open_action = QAction("📁 Open", self)
+                    open_action.triggered.connect(lambda: self.on_item_double_clicked(item))
+                    menu.addAction(open_action)
                 
-            delete_action = QAction("Delete", self)
-            delete_action.triggered.connect(lambda: self.delete_item(item))
-            menu.addAction(delete_action)
+                rename_action = QAction("✏️ Rename", self)
+                rename_action.triggered.connect(lambda: self.rename_item(item))
+                menu.addAction(rename_action)
+                
+                delete_action = QAction("🗑 Delete", self)
+                delete_action.triggered.connect(lambda: self.delete_item(item))
+                menu.addAction(delete_action)
+                
+                copy_action = QAction("📋 Copy", self)
+                copy_action.triggered.connect(lambda: self.copy_item(item))
+                menu.addAction(copy_action)
         
         # Add new actions
         menu.addSeparator()
-        new_folder_action = QAction("New Folder", self)
+        new_folder_action = QAction("📁 New Folder", self)
         new_folder_action.triggered.connect(self.create_new_folder)
         menu.addAction(new_folder_action)
         
-        refresh_action = QAction("Refresh", self)
+        new_file_action = QAction("📄 New File", self)
+        new_file_action.triggered.connect(self.create_new_file)
+        menu.addAction(new_file_action)
+        
+        menu.addSeparator()
+        refresh_action = QAction("🔄 Refresh", self)
         refresh_action.triggered.connect(self.refresh)
         menu.addAction(refresh_action)
         
         menu.exec_(self.file_list.mapToGlobal(position))
     
+    def rename_item(self, item: QListWidgetItem):
+        """Rename an item"""
+        data = item.data(Qt.ItemDataRole.UserRole)
+        if not data:
+            return
+        
+        old_name = data.name
+        new_name, ok = QInputDialog.getText(
+            self, "Rename",
+            f"Rename '{old_name}' to:",
+            text=old_name
+        )
+        
+        if ok and new_name and new_name != old_name:
+            if self.fs.rename_item(old_name, new_name):
+                self.refresh()
+                self.status_label.setText(f"Renamed: {old_name} → {new_name}")
+            else:
+                QMessageBox.warning(self, "Error", f"Cannot rename: {old_name}")
+    
     def delete_item(self, item: QListWidgetItem):
         """Delete an item"""
         data = item.data(Qt.ItemDataRole.UserRole)
+        if not data:
+            return
+        
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            f"Move '{data.name}' to Trash?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            # Move to trash
+            trash = self.fs.root.get_item(".Trash")
+            if not trash:
+                trash = Folder(".Trash", self.fs.root)
+                self.fs.root.add_item(trash)
+            
+            if self.fs.move_item(data.name, trash):
+                self.refresh()
+                self.status_label.setText(f"Moved to Trash: {data.name}")
+            else:
+                QMessageBox.warning(self, "Error", f"Cannot delete: {data.name}")
+    
+    def copy_item(self, item: QListWidgetItem):
+        """Copy an item (placeholder - just show message)"""
+        data = item.data(Qt.ItemDataRole.UserRole)
         if data:
-            # Confirm deletion
-            reply = QMessageBox.question(
-                self, "Confirm Delete",
-                f"Delete '{data.name}'?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.information(
+                self, "Copy",
+                f"Copy '{data.name}' to clipboard (simulated)"
             )
-            if reply == QMessageBox.StandardButton.Yes:
-                if self.fs.current_directory.remove_item(data.name):
-                    self.refresh()
-                    self.status_label.setText(f"Deleted: {data.name}")
+    
+    def create_new_file(self):
+        """Create a new file"""
+        name, ok = QInputDialog.getText(self, "New File", "Enter file name:")
+        if ok and name:
+            if self.fs.touch(name, ""):
+                self.refresh()
+                self.status_label.setText(f"Created file: {name}")
+            else:
+                QMessageBox.warning(self, "Error", f"Cannot create file: {name}")
+    
+    def keyPressEvent(self, event):
+        """Handle keyboard shortcuts"""
+        if event.key() == Qt.Key.Key_Delete:
+            # Delete selected items
+            for item in self.file_list.selectedItems():
+                self.delete_item(item)
+        elif event.key() == Qt.Key.Key_F2:
+            # Rename selected item
+            items = self.file_list.selectedItems()
+            if items:
+                self.rename_item(items[0])
+        elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+            # Open selected item
+            items = self.file_list.selectedItems()
+            if items:
+                self.on_item_double_clicked(items[0])
+        super().keyPressEvent(event)
+    
+    def dragEnterEvent(self, event):
+        """Handle drag enter for external drags"""
+        if event.mimeData().hasText():
+            event.accept()
+        else:
+            event.ignore()
+    
+    def dropEvent(self, event):
+        """Handle drop events for external files"""
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            for url in urls:
+                file_path = url.toLocalFile()
+                if file_path:
+                    # Just show a message for now
+                    QMessageBox.information(
+                        self, "File Dropped",
+                        f"File dropped: {os.path.basename(file_path)}\n\n"
+                        f"(Virtual file system doesn't support real file imports yet)"
+                    )
+        event.accept()
+    
+    def closeEvent(self, event):
+        """Handle close event"""
+        event.accept()

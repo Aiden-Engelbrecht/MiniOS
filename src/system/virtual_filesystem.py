@@ -1,4 +1,3 @@
-
 """
 Virtual File System for MiniOS
 Manages files and folders in memory
@@ -110,6 +109,8 @@ class VirtualFileSystem:
     def __init__(self):
         self.root = Folder("root")
         self.current_directory = self.root
+        self.history = []
+        self.history_index = -1
         self.init_default_structure()
         
     def init_default_structure(self):
@@ -133,44 +134,75 @@ class VirtualFileSystem:
         user.add_item(pictures)
         
         # Create some files
-        readme = File("README.txt", "Welcome to MiniOS!\n\nThis is a virtual file system.", documents)
+        readme = File("README.txt", "Welcome to MiniOS!\n\nThis is a virtual file system.\n\nYou can create, delete, and navigate files and folders.", documents)
         documents.add_item(readme)
         
-        notes = File("notes.txt", "Remember to save your work.", documents)
+        notes = File("notes.txt", "Remember to save your work.\n\nProject ideas:\n- Build more apps\n- Add themes\n- Improve performance", documents)
         documents.add_item(notes)
         
         # Create a sample image description
-        image_info = File("image_info.txt", "Sample image files would be stored here.", pictures)
+        image_info = File("image_info.txt", "Sample image files would be stored here.\n\nSupported formats: PNG, JPG, GIF, BMP", pictures)
         pictures.add_item(image_info)
         
         # Add some files to Downloads
-        download1 = File("file1.zip", "This is a dummy zip file.", downloads)
+        download1 = File("file1.zip", "This is a dummy zip file.\n\nContains sample data.", downloads)
         downloads.add_item(download1)
+        
+        download2 = File("file2.pdf", "Sample PDF document.\n\nThis is a placeholder for PDF files.", downloads)
+        downloads.add_item(download2)
         
         # Add a system folder
         system = Folder("System", self.root)
         self.root.add_item(system)
         
-        config = File("config.json", '{"theme": "dark", "language": "en"}', system)
+        config = File("config.json", '{"theme": "dark", "language": "en", "auto_save": true}', system)
         system.add_item(config)
         
+        # Add a trash folder
+        trash = Folder(".Trash", self.root)
+        self.root.add_item(trash)
+        
     def cd(self, path: str) -> bool:
-        """Change directory"""
+        """Change directory with history"""
+        success = False
+        old_dir = self.current_directory
+        
         if path == "..":
             if self.current_directory.parent:
                 self.current_directory = self.current_directory.parent
-                return True
-            return False
+                success = True
         elif path == "/":
             self.current_directory = self.root
-            return True
+            success = True
         else:
-            # Check if path exists in current directory
             item = self.current_directory.get_item(path)
             if item and isinstance(item, Folder):
                 self.current_directory = item
-                return True
-            return False
+                success = True
+        
+        if success and old_dir != self.current_directory:
+            # Add to history
+            self.history = self.history[:self.history_index + 1]
+            self.history.append(self.current_directory)
+            self.history_index = len(self.history) - 1
+        
+        return success
+    
+    def go_back(self) -> bool:
+        """Go back in history"""
+        if self.history_index > 0:
+            self.history_index -= 1
+            self.current_directory = self.history[self.history_index]
+            return True
+        return False
+    
+    def go_forward(self) -> bool:
+        """Go forward in history"""
+        if self.history_index < len(self.history) - 1:
+            self.history_index += 1
+            self.current_directory = self.history[self.history_index]
+            return True
+        return False
     
     def ls(self) -> List[str]:
         """List contents of current directory"""
@@ -220,3 +252,69 @@ class VirtualFileSystem:
                 "path": item.get_path()
             }
         return None
+    
+    def rename_item(self, old_name: str, new_name: str) -> bool:
+        """Rename a file or folder"""
+        item = self.current_directory.get_item(old_name)
+        if not item:
+            return False
+        if new_name in self.current_directory.children:
+            return False
+        
+        self.current_directory.remove_item(old_name)
+        item.name = new_name
+        self.current_directory.add_item(item)
+        return True
+    
+    def copy_item(self, name: str, destination: Folder) -> bool:
+        """Copy a file or folder to destination"""
+        item = self.current_directory.get_item(name)
+        if not item:
+            return False
+        
+        if isinstance(item, File):
+            new_file = File(item.name, item.content, destination)
+            destination.add_item(new_file)
+            return True
+        elif isinstance(item, Folder):
+            new_folder = Folder(item.name, destination)
+            destination.add_item(new_folder)
+            # Copy all children recursively
+            for child in item.list_items():
+                if isinstance(child, File):
+                    new_child = File(child.name, child.content, new_folder)
+                    new_folder.add_item(new_child)
+                elif isinstance(child, Folder):
+                    self._copy_folder(child, new_folder)
+            return True
+        return False
+    
+    def _copy_folder(self, source: Folder, destination: Folder):
+        """Helper to copy folder recursively"""
+        new_folder = Folder(source.name, destination)
+        destination.add_item(new_folder)
+        for child in source.list_items():
+            if isinstance(child, File):
+                new_child = File(child.name, child.content, new_folder)
+                new_folder.add_item(new_child)
+            elif isinstance(child, Folder):
+                self._copy_folder(child, new_folder)
+    
+    def move_item(self, name: str, destination: Folder) -> bool:
+        """Move a file or folder to destination"""
+        item = self.current_directory.get_item(name)
+        if not item:
+            return False
+        
+        if self.current_directory.remove_item(name):
+            destination.add_item(item)
+            return True
+        return False
+    
+    def get_path_for_item(self, item: FileSystemItem) -> str:
+        """Get the path for a file system item"""
+        return item.get_path()
+    
+    def get_all_items(self) -> List[FileSystemItem]:
+        """Get all items in current directory (alias for get_current_items)"""
+        return self.get_current_items()
