@@ -4,10 +4,10 @@ Desktop Environment for MiniOS - Minimal Black Edition
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QFrame
+    QPushButton, QFrame, QMenu, QInputDialog, QMessageBox
 )
 from PySide6.QtCore import Qt, QTimer, QDateTime, Signal, QPoint
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QAction
 
 
 class Taskbar(QWidget):
@@ -229,6 +229,8 @@ class DesktopWidget(QWidget):
     
     def __init__(self):
         super().__init__()
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
         self.setup_ui()
         
     def setup_ui(self):
@@ -281,3 +283,68 @@ class DesktopWidget(QWidget):
         def handler():
             self.iconClicked.emit(name)
         return handler
+    
+    def show_context_menu(self, position):
+        """Show desktop context menu"""
+        menu = QMenu(self)
+        
+        # Appearance section
+        refresh_action = QAction("🔄 Refresh", self)
+        refresh_action.triggered.connect(self.refresh_desktop)
+        menu.addAction(refresh_action)
+        
+        menu.addSeparator()
+        
+        # New section
+        new_menu = QMenu("📁 New", self)
+        
+        folder_action = QAction("Folder", self)
+        folder_action.triggered.connect(self.create_new_folder)
+        new_menu.addAction(folder_action)
+        
+        file_action = QAction("File", self)
+        file_action.triggered.connect(self.create_new_file)
+        new_menu.addAction(file_action)
+        
+        menu.addMenu(new_menu)
+        
+        menu.addSeparator()
+        
+        # System actions
+        search_action = QAction("🔍 Search", self)
+        search_action.triggered.connect(lambda: self.iconClicked.emit("search"))
+        menu.addAction(search_action)
+        
+        settings_action = QAction("⚙ Settings", self)
+        settings_action.triggered.connect(lambda: self.iconClicked.emit("settings"))
+        menu.addAction(settings_action)
+        
+        menu.addSeparator()
+        
+        # System actions
+        logout_action = QAction("🚪 Logout", self)
+        logout_action.triggered.connect(lambda: self.iconClicked.emit("logout"))
+        menu.addAction(logout_action)
+        
+        shutdown_action = QAction("⏻ Shutdown", self)
+        shutdown_action.triggered.connect(lambda: self.iconClicked.emit("shutdown"))
+        menu.addAction(shutdown_action)
+        
+        menu.exec_(self.mapToGlobal(position))
+    
+    def refresh_desktop(self):
+        """Refresh the desktop"""
+        self.update()
+        # Emit a refresh signal if needed
+    
+    def create_new_folder(self):
+        """Create a new folder on desktop (placeholder)"""
+        name, ok = QInputDialog.getText(self, "New Folder", "Enter folder name:")
+        if ok and name:
+            QMessageBox.information(self, "Created", f"Folder '{name}' created on desktop.")
+    
+    def create_new_file(self):
+        """Create a new file on desktop (placeholder)"""
+        name, ok = QInputDialog.getText(self, "New File", "Enter file name:")
+        if ok and name:
+            QMessageBox.information(self, "Created", f"File '{name}' created on desktop.")
