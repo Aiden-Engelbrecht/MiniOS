@@ -17,6 +17,7 @@ from core.start_menu import StartMenu
 from core.window_manager import WindowManager
 from core.settings_manager import SettingsManager
 from core.notification_manager import NotificationManager
+from core.system_tray import SystemTray
 from apps.sample_app import SampleAppContent
 from apps.file_explorer import FileExplorerWidget
 from apps.notepad import NotepadWidget
@@ -50,6 +51,7 @@ class DesktopWindow(QMainWindow):
         self.setup_ui()
         self.setup_search_shortcut()
         self.setup_notification_timer()
+        self.setup_system_tray()
         
     def setup_ui(self):
         # Main container
@@ -85,8 +87,32 @@ class DesktopWindow(QMainWindow):
         self.search_bar = SearchBarWidget()
         self.search_bar.appLaunched.connect(self.launch_application)
         
+    def setup_system_tray(self):
+        """Setup system tray"""
+        self.tray = SystemTray(self)
+        
+        # Connect tray signals
+        self.tray.showDesktopRequested.connect(self.minimize_all_windows)
+        self.tray.lockScreenRequested.connect(self.lock_screen)
+        self.tray.logoutRequested.connect(self.logout)
+        self.tray.shutdownRequested.connect(self.shutdown)
+        self.tray.settingsRequested.connect(lambda: self.launch_application("settings"))
+        
+        # Show tray
+        self.tray.show()
+        
+    def minimize_all_windows(self):
+        """Minimize all open windows"""
+        for window in self.window_manager.windows:
+            window.showMinimized()
+        self.show_toast("Desktop", "All windows minimized", "🖥", "info", 2000)
+        
+    def lock_screen(self):
+        """Lock the screen (return to login)"""
+        self.show_toast("Screen Locked", "Locking screen...", "🔒", "info", 2000)
+        QTimer.singleShot(1000, self.logout)
+        
     def setup_search_shortcut(self):
-        """Setup keyboard shortcut for search"""
         shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
         shortcut.activated.connect(self.show_search)
         
@@ -94,10 +120,9 @@ class DesktopWindow(QMainWindow):
         shortcut2.activated.connect(self.show_search)
     
     def setup_notification_timer(self):
-        """Setup demo notification timer"""
         self.notification_timer = QTimer()
         self.notification_timer.timeout.connect(self.show_demo_notification)
-        self.notification_timer.start(15000)
+        self.notification_timer.start(30000)
         
         QTimer.singleShot(2000, self.show_welcome_notification)
     
@@ -202,6 +227,8 @@ class DesktopWindow(QMainWindow):
             self.weather_widget.close()
         if self.search_bar:
             self.search_bar.close()
+        if self.tray:
+            self.tray.hide()
         if hasattr(self, 'notification_timer'):
             self.notification_timer.stop()
         self.window_manager.close_all_windows()
@@ -215,6 +242,8 @@ class DesktopWindow(QMainWindow):
             self.weather_widget.close()
         if self.search_bar:
             self.search_bar.close()
+        if self.tray:
+            self.tray.hide()
         if hasattr(self, 'notification_timer'):
             self.notification_timer.stop()
         self.window_manager.close_all_windows()
@@ -227,6 +256,8 @@ class DesktopWindow(QMainWindow):
             self.weather_widget.close()
         if self.search_bar:
             self.search_bar.close()
+        if self.tray:
+            self.tray.hide()
         if hasattr(self, 'notification_timer'):
             self.notification_timer.stop()
         self.window_manager.close_all_windows()
